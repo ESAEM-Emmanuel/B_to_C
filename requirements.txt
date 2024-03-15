@@ -1,0 +1,19 @@
+fastapi
+sqlalchemy # ORM
+psycopg2 # client de base de données
+psycopg2-binary
+pydantic[email]
+# databases[mysql]# pour my sql
+uvicorn # serveur d'application
+alembic # gestion de migration
+secure-smtplib
+loguru # gestion de log
+fastapi_permissions # gestion des permissions
+PyJWT 
+bcrypt
+passlib
+python-jose
+pillow
+python-multipart # gestion des médiat
+python-dotenv # gestion des variable d'environnement
+apscheduler # automatisation des tâches
