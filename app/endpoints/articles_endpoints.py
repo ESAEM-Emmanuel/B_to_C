@@ -50,11 +50,19 @@ async def create_article(new_article_c: articles_schemas.ArticleCreate, db: Sess
     return jsonable_encoder(new_article)
 
 # Get all articles requests
+@router.get("/get_all/", response_model=List[articles_schemas.ArticleListing])
+async def read_articles_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
+    articles_queries = db.query(models.Article).filter(models.Article.active == "True", models.Article.publish == "True", models.Article.locked == "False").order_by(models.Article.name).offset(skip).limit(limit).all()
+    print(current_user.is_staff)
+    if current_user.is_staff ==True:
+        articles_queries = db.query(models.Article).order_by(models.Article.name).offset(skip).limit(limit).all()                   
+    return jsonable_encoder(articles_queries)
+
+# Get all articles requests
 @router.get("/get_all_actif/", response_model=List[articles_schemas.ArticleListing])
 async def read_articles_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     
-    articles_queries = db.query(models.Article).filter(models.Article.active == "True").order_by(models.Article.name).offset(skip).limit(limit).all()
-                        
+    articles_queries = db.query(models.Article).filter(models.Article.active == "True", models.Article.publish == "True", models.Article.locked == "False").order_by(models.Article.name).offset(skip).limit(limit).all()                   
     return jsonable_encoder(articles_queries)
 
 
