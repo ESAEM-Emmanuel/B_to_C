@@ -133,6 +133,8 @@ async def update_article(article_id: str, article_update: articles_schemas.Artic
         
         if article_update.name:
             article_query.name = article_update.name
+        if article_update.town_id:
+            article_query.town_id = article_update.town_id
         if article_update.reception_place:
             article_query.reception_place = article_update.reception_place
         if article_update.owner_id:
