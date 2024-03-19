@@ -70,12 +70,14 @@ async def read_articles_actif(skip: int = 0, limit: int = 100, db: Session = Dep
 # Get an article
 # "/get_article_impersonal/?refnumber=value_refnumber&phone=valeur_phone&email=valeur_email&articlename=valeur_articlename" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.
 @router.get("/get_article_by_attribute/", status_code=status.HTTP_200_OK, response_model=List[articles_schemas.ArticleListing])
-async def detail_article_by_attribute(refnumber: Optional[str] = None, category_article_id: Optional[str] = None, article_statu_id: Optional[str] = None, end_date: Optional[str] = None, image_principal: Optional[str] = None, publish: Optional[str] = None, locked: Optional[str] = None, name: Optional[str] = None, description: Optional[str] = None, price: Optional[float] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def detail_article_by_attribute(refnumber: Optional[str] = None, town_id: Optional[str] = None, category_article_id: Optional[str] = None, article_statu_id: Optional[str] = None, end_date: Optional[str] = None, image_principal: Optional[str] = None, publish: Optional[str] = None, locked: Optional[str] = None, name: Optional[str] = None, description: Optional[str] = None, price: Optional[float] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     article_query = {} # objet vide
     if refnumber is not None :
         article_query = db.query(models.Article).filter(models.Article.refnumber == refnumber, models.Article.active == "True").order_by(models.Article.name).offset(skip).limit(limit).all()
     if name is not None :
         article_query = db.query(models.Article).filter(models.Article.name.contains(name), models.Article.active == "True").order_by(models.Article.name).offset(skip).limit(limit).all()
+    if town_id is not None :
+        article_query = db.query(models.Article).filter(models.Article.name.contains(town_id), models.Article.active == "True").order_by(models.Article.name).offset(skip).limit(limit).all()
     if category_article_id is not None :
         article_query = db.query(models.Article).filter(models.Article.category_article_id == category_article_id, models.Article.active == "True").order_by(models.Article.name).offset(skip).limit(limit).all()
     if article_statu_id is not None :
@@ -103,6 +105,7 @@ async def detail_article(article_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article with id: {article_id} does not exist")
     
     article_query = db.query(models.Article).filter(models.Article.id == article_id).first()
+    
     article_multimedias = article_query.article_multimedias
     details = [{ 'id': article_multimedia.id, 'refnumber': article_multimedia.refnumber, 'link_media': article_multimedia.link_media, 'article_id': article_multimedia.article_id, 'active': article_multimedia.active} for article_multimedia in article_multimedias]
     article_multimedias = details

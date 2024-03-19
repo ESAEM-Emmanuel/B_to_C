@@ -3,6 +3,7 @@ from datetime import datetime, date
 from enum import Enum
 from typing import Optional, List
 from app.schemas.users_schemas import UserListing
+from app.schemas.articles_schemas import ArticleListing
 
 class Town(BaseModel):
     name: str
@@ -31,6 +32,7 @@ class TownDetail(TownListing):
     updated_at: Optional[datetime] = None
     updated_by: Optional[constr(max_length=256)] = None
     owners : List[UserListing]
+    articles : List[ArticleListing]
     
     class Config:
         from_attributes = True 

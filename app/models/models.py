@@ -74,6 +74,7 @@ class Town(Base):
     
     # Colonnes étrangères inversées
     owners = relationship("User", back_populates="town")
+    articles = relationship("Article", back_populates="town")
 
 
 
@@ -134,6 +135,9 @@ class Article(Base):
     owner_id = Column(String, ForeignKey(
         "users.id", ondelete="CASCADE"), nullable=False)
     owner = relationship("User", back_populates="articles")
+    town_id = Column(String, ForeignKey(
+        "towns.id", ondelete="CASCADE"), nullable=False)
+    town = relationship("Town", back_populates="articles")
     category_article_id = Column(String, ForeignKey(
         "categorie_articles.id", ondelete="CASCADE"), nullable=False)
     category = relationship("CategoryArticle", back_populates="articles")

@@ -54,10 +54,6 @@ async def read_towns_actif(skip: int = 0, limit: int = 100, db: Session = Depend
     # towns_queries = db.query(models.Town).filter(models.Town.active == "True" ).order_by(models.Town.name).offset(skip).limit(limit).all()
     # Récupérez les villes du pays
     towns_queries = db.query(models.Town).filter(models.Town.active == "True").order_by(models.Town.name).join(models.Country).filter(models.Country.id == models.Town.country_id).group_by(models.Town.id).limit(limit).offset(skip).all()
-    
-    # pas de town
-    # if not towns_queries:
-    #     raise HTTPException(status_code=404, detail="town not found")
                         
     return jsonable_encoder(towns_queries)
 
@@ -90,6 +86,10 @@ async def detail_town(town_id: str, db: Session = Depends(get_db)):
     owners = town_query.owners
     details = [{ 'id': owner.id, 'refnumber': owner.refnumber, 'phone': owner.phone, 'town_id': owner.town_id, 'username': owner.username, 'email': owner.email, 'birthday': owner.birthday, 'gender': owner.gender, 'active': owner.active} for owner in owners]
     owners = details
+    
+    articles = town_query.articles
+    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
+    articles = details
     
     return jsonable_encoder(town_query)
 
@@ -127,6 +127,9 @@ async def update_town(town_id: str, town_update: towns_schemas.TownUpdate, db: S
     owners = town_query.owners
     details = [{ 'id': owner.id, 'refnumber': owner.refnumber, 'phone': owner.phone, 'town_id': owner.town_id, 'username': owner.username, 'email': owner.email, 'birthday': owner.birthday, 'gender': owner.gender, 'active': owner.active} for owner in owners]
     owners = details
+    articles = town_query.articles
+    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
+    articles = details
         
     return jsonable_encoder(town_query)
 

@@ -7,6 +7,7 @@ from app.schemas.article_miltimedias_schemas import ArticleMultimediaListing
 
 class Article(BaseModel):
     name: str
+    town_id: str
     reception_place: str
     category_article_id: str
     article_statu_id: str
@@ -49,6 +50,7 @@ class ArticleDetail(ArticleListing):
 
 class ArticleUpdate(BaseModel):
     name: Optional[constr(max_length=256)] = None
+    town_id: Optional[constr(max_length=256)] = None
     reception_place: Optional[constr(max_length=256)] = None
     owner_id: Optional[constr(max_length=256)] = None
     category_article_id: Optional[constr(max_length=256)] = None
