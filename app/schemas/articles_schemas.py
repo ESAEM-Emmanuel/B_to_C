@@ -3,7 +3,6 @@ from datetime import datetime, date
 from enum import Enum
 from typing import Optional, List
 from app.schemas.signals_schemas import SignalListing
-from app.schemas.article_miltimedias_schemas import ArticleMultimediaListing
 
 class Article(BaseModel):
     name: str
@@ -40,7 +39,6 @@ class ArticleDetail(ArticleListing):
     created_at: datetime
     updated_at: Optional[datetime] = None
     updated_by: Optional[constr(max_length=256)] = None
-    article_multimedias: List[ArticleMultimediaListing]
     signals: List[SignalListing]
     
     class Config:

@@ -4,16 +4,17 @@ from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from app.schemas import users_schemas
+from utils.users_utils import hash
+from typing import Optional
+from  utils import oauth2
 from typing import List
 from sqlalchemy.exc import SQLAlchemyError
 from app.models import models
-from utils.users_utils import hash
 import uuid
 from datetime import datetime, timedelta
 from app.database import engine, get_db
-from typing import Optional
-from  utils import oauth2
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from math import ceil
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -27,7 +28,7 @@ router = APIRouter(prefix = "/user", tags=['Users Requests'])
 async def create_user(new_user_c: users_schemas.UserCreate, db: Session = Depends(get_db)):
     # Vérifiez si l'utilisateur existe déjà dans la base de données
     if new_user_c.username:
-        if db.query(models.User).filter(models.User.username == new_user_c.username).first():
+        if db.query(models.User).filter(models.User.username == new_user_c.username.lower()).first():
             raise HTTPException(status_code=400, detail='Registered user with this username')
     if new_user_c.phone:
         if db.query(models.User).filter(models.User.phone == new_user_c.phone).first():
@@ -40,9 +41,10 @@ async def create_user(new_user_c: users_schemas.UserCreate, db: Session = Depend
             raise HTTPException(status_code=400, detail='Registered user with this image')
     
     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-    concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
+    concatenated_uuid = str(uuid.uuid4())#+ ":" + formated_date
     NUM_REF = 10001
     codefin = datetime.now().strftime("%m/%Y")
+    new_user_c.username = new_user_c.username.lower()
        
     concatenated_num_ref = str(
             NUM_REF + len(db.query(models.User).filter(models.User.refnumber.endswith(codefin)).all())) + "/" + codefin
@@ -70,7 +72,119 @@ async def read_users_actif(skip: int = 0, limit: int = 100, db: Session = Depend
     
     return jsonable_encoder(users_queries)
 
+@router.get("/")
+async def get_all_user(skip: int = 0, limit: int = 100, active: Optional[bool] = None, db: Session = Depends(get_db)):
+    try:
+        query = db.query(models.User)
 
+        # Filtrer par actif/inactif si fourni
+        if active is not None:
+            query = query.filter(models.User.active == active)
+
+        total_users = query.count()  # Nombre total de villes
+
+        if limit > 0:
+            users = query.order_by(models.User.username).offset(skip).limit(limit).all()
+        else:
+            users = query.order_by(models.User.username).all()
+
+        total_pages = ceil(total_users / limit) if limit > 0 else 1
+        print(users)
+
+        # Récupérer les informations sur le pays via une jointure
+        serialized_users = []
+        for user in users:
+            # Utiliser la jointure pour éviter plusieurs requêtes
+            town = db.query(models.Town).filter(models.Town.id == user.town_id).first()
+
+            if town:
+                town_serialized = users_schemas.TownList.from_orm(town)
+                user_serialized = users_schemas.UserListing.from_orm(user)
+                user_serialized.town = town_serialized  # Assigner la ville sérialisée à l'utilisateur
+                serialized_users.append(user_serialized)  # Ajouter l'utilisateur complet dans la liste
+
+        return {
+            "towns": jsonable_encoder(serialized_users),
+            "total_users": total_users,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    
+@router.get("/search/")
+async def search_users(
+    username: Optional[str] = None,
+    refnumber: Optional[str] = None,
+    phone: Optional[str] = None,
+    email: Optional[str] = None,
+    is_staff: Optional[bool] = None,
+    town_id: Optional[str] = None,
+    active: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Construction de la requête
+        query = db.query(models.User)
+
+        # Filtrer par nom utilisateur si fourni
+        if username is not None:
+            query = query.filter(models.User.username.ilike(f"%{username.lower()}%"))
+        # Filtrer par nom utilisateur si fourni
+        if refnumber is not None:
+            query = query.filter(models.User.refnumber.ilike(f"%{refnumber}%"))
+        # Filtrer par numéro de téléphone fourni
+        if phone is not None:
+            query = query.filter(models.User.phone.ilike(f"%{phone}%"))
+        # Filtrer par l'email fourni
+        if email is not None:
+            query = query.filter(models.User.email.ilike(f"%{email}%"))
+
+        # Filtrer par statut actif/inactif
+        if active is not None:
+            query = query.filter(models.User.active == active)
+        # Filtrer par statut actif/inactif
+        if is_staff is not None:
+            query = query.filter(models.User.is_staff == active)
+
+        # Filtrer par pays si fourni
+        if town_id is not None:
+            query = query.filter(models.User.town_id == town_id)
+
+        # Pagination
+        total_users = query.count()  # Nombre total de villes
+
+        if limit > 0:
+            users = query.order_by(models.User.name).offset(skip).limit(limit).all()
+        else:
+            users = query.order_by(models.User.name).all()
+
+        total_pages = ceil(total_users / limit) if limit > 0 else 1
+
+        # Récupérer les informations sur le pays via une jointure
+        serialized_users = []
+        for user in users:
+            # Utiliser la jointure pour éviter plusieurs requêtes
+            town = db.query(models.Town).filter(models.Town.id == user.town_id).first()
+
+            if town:
+                town_serialized = users_schemas.TownList.from_orm(town)
+                user_serialized = users_schemas.UserListing.from_orm(user)
+                user_serialized.town = town_serialized
+                serialized_users.append(town_serialized)
+
+        return {
+            "towns": jsonable_encoder(serialized_users),
+            "total_users": total_users,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 # Get an user
 # "/get_user_impersonal/?refnumber=value_refnumber&phone=valeur_phone&email=valeur_email&username=valeur_username" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.

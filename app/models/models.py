@@ -45,7 +45,7 @@ class Country(Base):
     refnumber = Column(String, unique=True, nullable=False)
     name = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
+    created_by = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
@@ -63,7 +63,7 @@ class Town(Base):
     refnumber = Column(String, unique=True, nullable=False)
     name = Column(String, unique=False, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
+    created_by = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
@@ -123,7 +123,8 @@ class Article(Base):
     description = Column(String(length=65535), nullable=False)
     reception_place = Column(String(length=256), nullable=False)
     price = Column(Double, nullable=True)
-    image_principal = Column(String, index=True, unique=True, nullable=False)
+    main_image = Column(String, index=True, unique=True, nullable=False)
+    other_images = Column(ARRAY(String), index=True, nullable=True) 
     end_date = Column(DateTime)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -145,27 +146,9 @@ class Article(Base):
         "article_status.id", ondelete="CASCADE"), nullable=False)
     article_statu = relationship("ArticleStatus", back_populates="articles")# il s'agit des éléments en cour appartenant à la tables article_status
     # Colonnes étrangères inversées
-    article_multimedias = relationship("ArticleMultimedia", back_populates="article")
     signals = relationship("Signal", back_populates="article")
     
-# ArticleMultimedia : doing    
-class ArticleMultimedia(Base):
-    __tablename__ = "article_multimedias"
-
-    id = Column(String, primary_key=True, index=True, unique=True, nullable=False)
-    refnumber = Column(String, unique=True, nullable=False)
-    link_media = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    updated_by = Column(String, nullable=True)
-    active = Column(Boolean, default=True)
-    # relationship
-    article_id = Column(String, ForeignKey(
-        "articles.id", ondelete="CASCADE"), nullable=False)
-    article = relationship("Article", back_populates="article_multimedias")
-     
-    
+   
 # Signal : doing
 class Signal(Base):
     __tablename__ = "signals"

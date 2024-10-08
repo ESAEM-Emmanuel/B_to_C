@@ -13,12 +13,14 @@ from app.database import engine, get_db
 from typing import Optional
 from  utils import oauth2
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from math import ceil
+
 
 models.Base.metadata.create_all(bind=engine)
 
 # /countrys/
 
-router = APIRouter(prefix = "/country", tags=['Countrys Requests'])
+router = APIRouter(prefix = "/countries", tags=['Countrys Requests'])
  
 # create a new country sheet
 @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=countries_schemas.CountryListing)
@@ -28,15 +30,17 @@ async def create_country(new_country_c: countries_schemas.CountryCreate, db: Ses
         raise HTTPException(status_code=403, detail="This country also existe!")
     
     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-    concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
+    # concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
     NUM_REF = 10001
     codefin = datetime.now().strftime("%m/%Y")
     concatenated_num_ref = str(
             NUM_REF + len(db.query(models.Country).filter(models.Country.refnumber.endswith(codefin)).all())) + "/" + codefin
     
     author = current_user.id
+    # Convertir le nom en minuscules
+    new_country_c.name = new_country_c.name.lower()
     
-    new_country= models.Country(id = concatenated_uuid, **new_country_c.dict(), refnumber = concatenated_num_ref, created_by = author)
+    new_country= models.Country(id = str(uuid.uuid4()), **new_country_c.dict(), refnumber = concatenated_num_ref, created_by = author)
     
     try:
         db.add(new_country )# pour ajouter une tuple
@@ -48,31 +52,86 @@ async def create_country(new_country_c: countries_schemas.CountryCreate, db: Ses
     
     return jsonable_encoder(new_country)
 
-# Get all countrys requests
-@router.get("/get_all_actif/", response_model=List[countries_schemas.CountryListing])
-async def read_countrys_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    
-    countries_queries = db.query(models.Country).filter(models.Country.active == "True").order_by(models.Country.name).offset(skip).limit(limit).all()
-                        
-    return jsonable_encoder(countries_queries)
 
+@router.get("/")
+async def get_all_countries(skip: int = 0, limit: int = 100, active: Optional[bool] = None, db: Session = Depends(get_db)):
+    try:
+        query = db.query(models.Country)
+
+        # Filtrer par actif/inactif si fourni
+        if active is not None:
+            query = query.filter(models.Country.active == active)
+            
+        if limit ==-1:
+            query = query.filter(models.Country.active == active)
+            serialized_countries = [countries_schemas.CountryListing.from_orm(country) for country in countries]
+            return {
+                "countries": jsonable_encoder(serialized_countries)
+            }
+
+        total_countries = query.count()  # Nombre total de pays
+
+        # Pagination
+        countries = query.order_by(models.Country.name).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_countries / limit) if limit > 0 else 1
+
+        serialized_countries = [countries_schemas.CountryListing.from_orm(country) for country in countries]
+
+        return {
+            "countries": jsonable_encoder(serialized_countries),
+            "total_countries": total_countries,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@router.get("/search/")
+async def search_countries(
+    query: Optional[str] = None,
+    active: Optional[bool] = None,
+    name: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        country_query = db.query(models.Country)
+
+        # Filtrer par nom si fourni
+        if query:
+            country_query = country_query.filter(models.Country.name.contains(query.lower()))
+
+        # Filtrer par statut actif/inactif
+        if active is not None:
+            country_query = country_query.filter(models.Country.active == active)
+            
+        towns = country_query.towns
+        details = [{ 'id': town.id, 'refnumber': town.refnumber, 'name': town.name, 'country_id': town.country_id, 'active': town.active} for town in towns]
+        towns = details
+
+        # Pagination
+        total_countries = country_query.count()
+        countries = country_query.order_by(models.Country.name).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_countries / limit) if limit > 0 else 1
+
+        serialized_countries = [countries_schemas.CountryListing.from_orm(country) for country in countries]
+
+        return {
+            "countries": jsonable_encoder(serialized_countries),
+            "total_countries": total_countries,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 # Get an country
-# "/get_country_impersonal/?refnumber=value_refnumber&phone=valeur_phone&email=valeur_email&countryname=valeur_countryname" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.
-@router.get("/get_country_by_attribute/", status_code=status.HTTP_200_OK, response_model=List[countries_schemas.CountryListing])
-async def detail_country_by_attribute(refnumber: Optional[str] = None, name: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    country_query = {} # objet vide
-    if refnumber is not None :
-        country_query = db.query(models.Country).filter(models.Country.refnumber == refnumber, models.Country.active == "True").order_by(models.Country.name).offset(skip).limit(limit).all()
-    if name is not None :
-        country_query = db.query(models.Country).filter(models.Country.name.contains(name), models.Country.active == "True" ).order_by(models.Country.name).offset(skip).limit(limit).all()
-    
-    
-    return jsonable_encoder(country_query)
-
-# Get an country
-@router.get("/get/{country_id}", status_code=status.HTTP_200_OK, response_model=countries_schemas.CountryDetail)
+@router.get("/{country_id}", status_code=status.HTTP_200_OK, response_model=countries_schemas.CountryDetail)
 async def detail_country(country_id: str, db: Session = Depends(get_db)):
     country_query = db.query(models.Country).filter(models.Country.id == country_id, models.Country.active == "True").first()
     if not country_query:
@@ -86,7 +145,7 @@ async def detail_country(country_id: str, db: Session = Depends(get_db)):
 
 
 # update an country request
-@router.put("/update/{country_id}", status_code=status.HTTP_200_OK, response_model = countries_schemas.CountryDetail)
+@router.put("/{country_id}", status_code=status.HTTP_200_OK, response_model = countries_schemas.CountryDetail)
 async def update_country(country_id: str, country_update: countries_schemas.CountryUpdate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
         
     country_query = db.query(models.Country).filter(models.Country.id == country_id, models.Country.active == "True").first()
@@ -107,7 +166,10 @@ async def update_country(country_id: str, country_update: countries_schemas.Coun
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process , pleace try later sorry!")
-        
+    
+    towns = country_query.towns
+    details = [{ 'id': town.id, 'refnumber': town.refnumber, 'name': town.name, 'country_id': town.country_id, 'active': town.active} for town in towns]
+    towns = details    
     return jsonable_encoder(country_query)
 
 

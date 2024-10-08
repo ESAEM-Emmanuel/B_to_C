@@ -25,7 +25,7 @@ class CountryListing(Country):
 class CountryDetail(CountryListing):
     
     created_at: datetime
-    created_by: str
+    created_by: Optional[str] = None
     updated_at: Optional[datetime] = None
     updated_by: Optional[constr(max_length=256)] = None
     towns : List[TownListing]

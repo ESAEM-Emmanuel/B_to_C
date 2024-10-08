@@ -8,6 +8,14 @@ from app.schemas.signals_schemas import SignalListing
 
 from app.models.models import GenderType
 
+class TownList(BaseModel):
+    id: str
+    name: str
+    country_id: str
+    refnumber: str
+    active: bool
+    class Config:
+        from_attributes = True  #
 class User(BaseModel):
     phone: str
     town_id: str
@@ -28,6 +36,7 @@ class UserListing(User):
     id: str
     refnumber: str
     active: bool
+    town : Optional[TownList]
    
     class Config:
         from_attributes = True 
@@ -37,7 +46,7 @@ class UserDetail(UserListing):
     image: str
     is_staff: bool
     created_at: datetime
-    created_by: str
+    created_by: Optional[constr(max_length=256)] = None
     updated_at: Optional[datetime] = None
     updated_by: Optional[constr(max_length=256)] = None
     articles: List[ArticleListing]
