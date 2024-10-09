@@ -65,12 +65,7 @@ async def create_user(new_user_c: users_schemas.UserCreate, db: Session = Depend
     
     return jsonable_encoder(new_user)
 
-# Get all users requests
-@router.get("/get_all_actif/", response_model=List[users_schemas.UserListing])
-async def read_users_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    users_queries = db.query(models.User).filter(models.User.active == "True").order_by(models.User.username).offset(skip).limit(limit).all()                  
-    
-    return jsonable_encoder(users_queries)
+
 
 @router.get("/")
 async def get_all_user(skip: int = 0, limit: int = 100, active: Optional[bool] = None, db: Session = Depends(get_db)):
@@ -153,16 +148,14 @@ async def search_users(
         # Filtrer par pays si fourni
         if town_id is not None:
             query = query.filter(models.User.town_id == town_id)
+        
+        users = query
 
         # Pagination
         total_users = query.count()  # Nombre total de villes
 
-        if limit > 0:
-            users = query.order_by(models.User.name).offset(skip).limit(limit).all()
-        else:
-            users = query.order_by(models.User.name).all()
-
         total_pages = ceil(total_users / limit) if limit > 0 else 1
+        print(users)
 
         # Récupérer les informations sur le pays via une jointure
         serialized_users = []
@@ -173,8 +166,8 @@ async def search_users(
             if town:
                 town_serialized = users_schemas.TownList.from_orm(town)
                 user_serialized = users_schemas.UserListing.from_orm(user)
-                user_serialized.town = town_serialized
-                serialized_users.append(town_serialized)
+                user_serialized.town = town_serialized  # Assigner la ville sérialisée à l'utilisateur
+                serialized_users.append(user_serialized)  # Ajouter l'utilisateur complet dans la liste
 
         return {
             "towns": jsonable_encoder(serialized_users),
@@ -186,45 +179,57 @@ async def search_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-# Get an user
-# "/get_user_impersonal/?refnumber=value_refnumber&phone=valeur_phone&email=valeur_email&username=valeur_username" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.
-@router.get("/get_user_by_attribut/", status_code=status.HTTP_200_OK, response_model=List[users_schemas.UserListing])
-async def detail_user_by_attribut(refnumber: Optional[str] = None, phone: Optional[str] = None, username: Optional[str] = None, email: Optional[str] = None, is_staff: Optional[bool] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    user_query = {} # objet vide
-    if refnumber is not None :
-        user_query = db.query(models.User).filter(models.User.refnumber == refnumber, models.User.active == "True").order_by(models.User.username).offset(skip).limit(limit).all()
-    if phone is not None :
-        user_query = db.query(models.User).filter(models.User.phone.contains(phone), models.User.active == "True").order_by(models.User.username).offset(skip).limit(limit).all()
-    if email is not None:
-        user_query = db.query(models.User).filter(models.User.email.contains(email), models.User.active == "True").order_by(models.User.username).offset(skip).limit(limit).all()
-    if username is not None :
-        user_query = db.query(models.User).filter(models.User.username.contains(username), models.User.active == "True").order_by(models.User.username).offset(skip).limit(limit).all()
-    if is_staff is not None :
-        user_query = db.query(models.User).filter(models.User.is_staff == is_staff, models.User.active == "True").order_by(models.User.username).offset(skip).limit(limit).all()
-    
-    return jsonable_encoder(user_query)
 
 # Get an user
-@router.get("/get/{user_id}", status_code=status.HTTP_200_OK, response_model=users_schemas.UserDetail)
+@router.get("/{user_id}", status_code=status.HTTP_200_OK, response_model=users_schemas.UserDetail)
 async def detail_user(user_id: str, db: Session = Depends(get_db)):
     user_query = db.query(models.User).filter(models.User.id == user_id).first()
     if not user_query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {user_id} does not exist")
     
-    
-    articles = user_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
+    details = [{ 
+                'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_statu_id': article.article_statu_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'image_principal': article.image_principal,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active
+                } for article in user_query.articles]
     articles = details
     
-    signals = user_query.signals
-    details = [{ 'id': signal.id, 'refnumber': signal.refnumber, 'owner_id': signal.owner_id, 'article_id': signal.article_id, 'description': signal.description, 'active': signal.active} for signal in signals]
+    details = [{ 'id': signal.id,
+                'refnumber': signal.refnumber,
+                'owner_id': signal.owner_id,
+                'article_id': signal.article_id,
+                'description': signal.description,
+                'active': signal.active
+                } for signal in user_query.signals]
     signals = details
     
-    return jsonable_encoder(user_query)
+    # Récupération des détails du pays
+    town_query = db.query(models.Town).filter(models.Town.id == user_query.town_id).first()
+    if not town_query:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {user_query.town_id} does not exist")
+
+    # Sérialisation de la ville
+    town_serialized = users_schemas.TownList.from_orm(town_query)
+    
+    # Construction de la réponse
+    serialized_user = users_schemas.UserDetail.from_orm(user_query)
+    serialized_user.town = town_serialized
+    return jsonable_encoder(serialized_user)
 
 
 # update an user request
-@router.put("/update/{user_id}", status_code=status.HTTP_200_OK, response_model = users_schemas.UserDetail)
+@router.put("/{user_id}", status_code=status.HTTP_200_OK, response_model = users_schemas.UserDetail)
 async def update_user(user_id: str, user_update: users_schemas.UserUpdate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
         
     user_query = db.query(models.User).filter(models.User.id == user_id).first()
@@ -265,14 +270,46 @@ async def update_user(user_id: str, user_update: users_schemas.UserUpdate, db: S
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process , pleace try later sorry!")
     
     user_query = db.query(models.User).filter(models.User.id == user_id).first()
-    articles = user_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
+    
+    details = [{ 
+                'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_statu_id': article.article_statu_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'image_principal': article.image_principal,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active
+                } for article in user_query.articles]
     articles = details
     
-    signals = user_query.signals
-    details = [{ 'id': signal.id, 'refnumber': signal.refnumber, 'owner_id': signal.owner_id, 'article_id': signal.article_id, 'description': signal.description, 'active': signal.active} for signal in signals]
-    signals = details    
-    return jsonable_encoder(user_query)
+    details = [{ 'id': signal.id,
+                'refnumber': signal.refnumber,
+                'owner_id': signal.owner_id,
+                'article_id': signal.article_id,
+                'description': signal.description,
+                'active': signal.active
+                } for signal in user_query.signals]
+    signals = details
+    
+    # Récupération des détails du pays
+    town_query = db.query(models.Town).filter(models.Town.id == user_query.town_id).first()
+    if not town_query:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {user_query.town_id} does not exist")
+
+    # Sérialisation de la ville
+    town_serialized = users_schemas.TownList.from_orm(town_query)
+    
+    # Construction de la réponse
+    serialized_user = users_schemas.UserDetail.from_orm(user_query)
+    serialized_user.town = town_serialized
+    return jsonable_encoder(serialized_user)
 
 
 # delete permission
@@ -296,18 +333,8 @@ async def delete_user(user_id: str,  db: Session = Depends(get_db),current_user 
     
     return {"message": "User deleted!"}
 
-
-# Get all user inactive requests
-@router.get("/get_all_inactive/", response_model=List[users_schemas.UserListing])
-async def read_users_inactive(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
-    
-    users_queries = db.query(models.User).filter(models.User.active == "False").order_by(models.User.name).offset(skip).limit(limit).all()
-                      
-    return jsonable_encoder(users_queries)
-
-
 # Restore user
-@router.patch("/restore/{user_id}", status_code = status.HTTP_200_OK,response_model = users_schemas.UserListing)
+@router.patch("/restore/{user_id}", status_code = status.HTTP_200_OK,response_model = users_schemas.UserDetail)
 async def restore_user(user_id: str,  db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
     
     user_query = db.query(models.User).filter(models.User.id == user_id, models.User.active == "False").first()
@@ -326,5 +353,44 @@ async def restore_user(user_id: str,  db: Session = Depends(get_db), current_use
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
     
+    user_query = db.query(models.User).filter(models.User.id == user_id).first()
     
-    return jsonable_encoder(user_query)
+    details = [{ 
+                'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_statu_id': article.article_statu_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'image_principal': article.image_principal,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active
+                } for article in user_query.articles]
+    articles = details
+    
+    details = [{ 'id': signal.id,
+                'refnumber': signal.refnumber,
+                'owner_id': signal.owner_id,
+                'article_id': signal.article_id,
+                'description': signal.description,
+                'active': signal.active
+                } for signal in user_query.signals]
+    signals = details
+    
+    # Récupération des détails du pays
+    town_query = db.query(models.Town).filter(models.Town.id == user_query.town_id).first()
+    if not town_query:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {user_query.town_id} does not exist")
+
+    # Sérialisation de la ville
+    town_serialized = users_schemas.TownList.from_orm(town_query)
+    
+    # Construction de la réponse
+    serialized_user = users_schemas.UserDetail.from_orm(user_query)
+    serialized_user.town = town_serialized
+    return jsonable_encoder(serialized_user)

@@ -191,8 +191,6 @@ async def detail_town(town_id: str, db: Session = Depends(get_db)):
     if not country_query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {town_query.country_id} does not exist")
 
-    print("country_query :", country_query.__dict__)
-    
     # Sérialisation du pays
     country = towns_schemas.CountryList.from_orm(country_query)
 
@@ -296,16 +294,6 @@ async def delete_town(town_id: str,  db: Session = Depends(get_db), current_user
     
     
     return {"message": "town deleted!"}
-
-
-# Get all town inactive requests
-@router.get("/get_all_inactive/", response_model=List[towns_schemas.TownListing])
-async def read_towns_inactive(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
-    
-    towns_queries = db.query(models.Town).filter(models.Town.active == "False").order_by(models.Town.name).offset(skip).limit(limit).all()
-                      
-    return jsonable_encoder(towns_queries)
-
 
 # Restore town
 @router.patch("/restore/{town_id}", status_code = status.HTTP_200_OK,response_model = towns_schemas.TownDetail)

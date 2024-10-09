@@ -194,16 +194,6 @@ async def delete_country(country_id: str,  db: Session = Depends(get_db), curren
     
     return {"message": "country deleted!"}
 
-
-# Get all country inactive requests
-@router.get("/get_all_inactive/", response_model=List[countries_schemas.CountryListing])
-async def read_countrys_inactive(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
-    
-    countries_queries = db.query(models.Country).filter(models.Country.active == "False").order_by(models.Country.name).offset(skip).limit(limit).all()
-                     
-    return jsonable_encoder(countries_queries)
-
-
 # Restore permission
 @router.patch("/restore/{country_id}", status_code = status.HTTP_200_OK,response_model = countries_schemas.CountryListing)
 async def restore_country(country_id: str,  db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
