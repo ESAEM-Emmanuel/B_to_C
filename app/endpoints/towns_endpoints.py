@@ -71,13 +71,26 @@ async def get_all_town(skip: int = 0, limit: int = 100, active: Optional[bool] =
         serialized_towns = []
         for town in towns:
             # Utiliser la jointure pour éviter plusieurs requêtes
-            country = db.query(models.Country).filter(models.Country.id == town.country_id).first()
 
-            if country:
+            town_serialized = towns_schemas.TownListing.from_orm(town)
+            if town.country_id:
+                country = db.query(models.Country).filter(models.Country.id == town.country_id).first()
                 country_serialized = towns_schemas.CountryList.from_orm(country)
-                town_serialized = towns_schemas.TownListing.from_orm(town)
                 town_serialized.country = country_serialized
-                serialized_towns.append(town_serialized)
+            if town.created_by :
+                # Récupération des détails du pays
+                creator_query = db.query(models.User).filter(models.User.id == town.created_by).first()
+                if not creator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {town.created_by} does not exist")
+                creator_serialized = towns_schemas.UserInfo.from_orm(creator_query)
+                town_serialized.creator = creator_serialized
+            if town.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == town.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {town.updated_by} does not exist")
+                updator_serialized = towns_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                town_serialized.updator = updator_serialized
+            serialized_towns.append(town_serialized)
 
         return {
             "towns": jsonable_encoder(serialized_towns),
@@ -129,13 +142,26 @@ async def search_towns(
         serialized_towns = []
         for town in towns:
             # Utiliser la jointure pour éviter plusieurs requêtes
-            country = db.query(models.Country).filter(models.Country.id == town.country_id).first()
 
-            if country:
+            town_serialized = towns_schemas.TownListing.from_orm(town)
+            if town.country_id:
+                country = db.query(models.Country).filter(models.Country.id == town.country_id).first()
                 country_serialized = towns_schemas.CountryList.from_orm(country)
-                town_serialized = towns_schemas.TownListing.from_orm(town)
                 town_serialized.country = country_serialized
-                serialized_towns.append(town_serialized)
+            if town.created_by :
+                # Récupération des détails du pays
+                creator_query = db.query(models.User).filter(models.User.id == town.created_by).first()
+                if not creator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {town.created_by} does not exist")
+                creator_serialized = towns_schemas.UserInfo.from_orm(creator_query)
+                town_serialized.creator = creator_serialized
+            if town.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == town.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {town.updated_by} does not exist")
+                updator_serialized = towns_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                town_serialized.updator = updator_serialized
+            serialized_towns.append(town_serialized)
 
         return {
             "towns": jsonable_encoder(serialized_towns),
@@ -151,8 +177,8 @@ async def search_towns(
 # Get a town with country details
 @router.get("/{town_id}", status_code=status.HTTP_200_OK, response_model=towns_schemas.TownDetail)
 async def detail_town(town_id: str, db: Session = Depends(get_db)):
-    town_query = db.query(models.Town).filter(models.Town.id == town_id).first()
-    if not town_query:
+    query = db.query(models.Town).filter(models.Town.id == town_id).first()
+    if not query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {town_id} does not exist")
 
     # Récupération des informations des propriétaires
@@ -166,7 +192,7 @@ async def detail_town(town_id: str, db: Session = Depends(get_db)):
         'birthday': owner.birthday, 
         'gender': owner.gender, 
         'active': owner.active 
-    } for owner in town_query.owners]
+    } for owner in query.owners]
 
     # Récupération des informations des articles
     articles_details = [{ 
@@ -184,19 +210,32 @@ async def detail_town(town_id: str, db: Session = Depends(get_db)):
         'publish': article.publish, 
         'locked': article.locked, 
         'active': article.active 
-    } for article in town_query.articles]
-
-    # Récupération des détails du pays
-    country_query = db.query(models.Country).filter(models.Country.id == town_query.country_id).first()
-    if not country_query:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {town_query.country_id} does not exist")
-
-    # Sérialisation du pays
-    country = towns_schemas.CountryList.from_orm(country_query)
+    } for article in query.articles]
 
     # Construction de la réponse
-    serialized_town = towns_schemas.TownDetail.from_orm(town_query)
+    serialized_town = towns_schemas.TownDetail.from_orm(query)
+    
+    # Récupération des détails du pays
+    country_query = db.query(models.Country).filter(models.Country.id == query.country_id).first()
+    if not country_query:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {query.country_id} does not exist")
+    # Sérialisation du pays
+    country = towns_schemas.CountryList.from_orm(country_query)
     serialized_town.country = country
+    
+    if query.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.created_by} does not exist")
+        creator_serialized = towns_schemas.UserInfo.from_orm(creator_query)
+        serialized_town.creator = creator_serialized
+    if query.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
+        updator_serialized = towns_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_town.updator = updator_serialized
     return jsonable_encoder(serialized_town)
 
 
@@ -204,29 +243,29 @@ async def detail_town(town_id: str, db: Session = Depends(get_db)):
 @router.put("/{town_id}", status_code=status.HTTP_200_OK, response_model = towns_schemas.TownDetail)
 async def update_town(town_id: str, town_update: towns_schemas.TownUpdate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
         
-    town_query = db.query(models.Town).filter(models.Town.id == town_id).first()
+    query = db.query(models.Town).filter(models.Town.id == town_id).first()
 
-    if not town_query:
+    if not query:
             
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {town_id} does not exist")
     else:
         
-        town_query.updated_by =  current_user.id
+        query.updated_by =  current_user.id
         
         if town_update.name:
-            town_query.name = town_update.name
+            query.name = town_update.name
         if town_update.country_id:
-            town_query.country_id = town_update.country_id
+            query.country_id = town_update.country_id
     
     
     try:
         db.commit() # pour faire l'enregistrement
-        db.refresh(town_query)# pour renvoyer le résultat
+        db.refresh(query)# pour renvoyer le résultat
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process , pleace try later sorry!")
     
-    town_query = db.query(models.Town).filter(models.Town.id == town_id).first()    
+    query = db.query(models.Town).filter(models.Town.id == town_id).first()    
     # Récupération des informations des propriétaires
     owners_details = [{ 
         'id': owner.id, 
@@ -238,7 +277,7 @@ async def update_town(town_id: str, town_update: towns_schemas.TownUpdate, db: S
         'birthday': owner.birthday, 
         'gender': owner.gender, 
         'active': owner.active 
-    } for owner in town_query.owners]
+    } for owner in query.owners]
 
     # Récupération des informations des articles
     articles_details = [{ 
@@ -256,20 +295,32 @@ async def update_town(town_id: str, town_update: towns_schemas.TownUpdate, db: S
         'publish': article.publish, 
         'locked': article.locked, 
         'active': article.active 
-    } for article in town_query.articles]
+    } for article in query.articles]
 
-    # Récupération des détails du pays
-    country_query = db.query(models.Country).filter(models.Country.id == town_query.country_id).first()
-    if not country_query:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {town_query.country_id} does not exist")
-
-    print("country_query :", country_query.__dict__)
+    # Construction de la réponse
+    serialized_town = towns_schemas.TownDetail.from_orm(query)
     
+    # Récupération des détails du pays
+    country_query = db.query(models.Country).filter(models.Country.id == query.country_id).first()
+    if not country_query:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {query.country_id} does not exist")
     # Sérialisation du pays
     country = towns_schemas.CountryList.from_orm(country_query)
-    # Construction de la réponse
-    serialized_town = towns_schemas.TownDetail.from_orm(town_query)
     serialized_town.country = country
+    
+    if query.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.created_by} does not exist")
+        creator_serialized = towns_schemas.UserInfo.from_orm(creator_query)
+        serialized_town.creator = creator_serialized
+    if query.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
+        updator_serialized = towns_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_town.updator = updator_serialized
     return jsonable_encoder(serialized_town)
 
 
@@ -299,22 +350,22 @@ async def delete_town(town_id: str,  db: Session = Depends(get_db), current_user
 @router.patch("/restore/{town_id}", status_code = status.HTTP_200_OK,response_model = towns_schemas.TownDetail)
 async def restore_town(town_id: str,  db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
     
-    town_query = db.query(models.Town).filter(models.Town.id == town_id, models.Town.active == "False").first()
+    query = db.query(models.Town).filter(models.Town.id == town_id, models.Town.active == "False").first()
     
-    if not town_query:
+    if not query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {town_id} does not exist")
         
-    town_query.active = True
-    town_query.updated_by =  current_user.id
+    query.active = True
+    query.updated_by =  current_user.id
     
     try:  
         db.commit() # pour faire l'enregistrement
-        db.refresh(town_query)# pour renvoyer le résultat
+        db.refresh(query)# pour renvoyer le résultat
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
     
-    town_query = db.query(models.Town).filter(models.Town.id == town_id).first()    
+    query = db.query(models.Town).filter(models.Town.id == town_id).first()    
     # Récupération des informations des propriétaires
     owners_details = [{ 
         'id': owner.id, 
@@ -326,7 +377,7 @@ async def restore_town(town_id: str,  db: Session = Depends(get_db), current_use
         'birthday': owner.birthday, 
         'gender': owner.gender, 
         'active': owner.active 
-    } for owner in town_query.owners]
+    } for owner in query.owners]
 
     # Récupération des informations des articles
     articles_details = [{ 
@@ -344,19 +395,30 @@ async def restore_town(town_id: str,  db: Session = Depends(get_db), current_use
         'publish': article.publish, 
         'locked': article.locked, 
         'active': article.active 
-    } for article in town_query.articles]
-
-    # Récupération des détails du pays
-    country_query = db.query(models.Country).filter(models.Country.id == town_query.country_id).first()
-    if not country_query:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {town_query.country_id} does not exist")
-
-    print("country_query :", country_query.__dict__)
-    
-    # Sérialisation du pays
-    country = towns_schemas.CountryList.from_orm(country_query)
+    } for article in query.articles]
 
     # Construction de la réponse
-    serialized_town = towns_schemas.TownDetail.from_orm(town_query)
+    serialized_town = towns_schemas.TownDetail.from_orm(query)
+    
+    # Récupération des détails du pays
+    country_query = db.query(models.Country).filter(models.Country.id == query.country_id).first()
+    if not country_query:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"country with id: {query.country_id} does not exist")
+    # Sérialisation du pays
+    country = towns_schemas.CountryList.from_orm(country_query)
     serialized_town.country = country
+    
+    if query.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.created_by} does not exist")
+        creator_serialized = towns_schemas.UserInfo.from_orm(creator_query)
+        serialized_town.creator = creator_serialized
+    if query.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
+        updator_serialized = towns_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_town.updator = updator_serialized
     return jsonable_encoder(serialized_town)

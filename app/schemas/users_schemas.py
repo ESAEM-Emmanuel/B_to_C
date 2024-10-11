@@ -2,20 +2,11 @@ from pydantic import BaseModel, EmailStr, PositiveInt, validator, root_validator
 from datetime import datetime, date
 from enum import Enum
 from typing import Optional, List
-
 from app.schemas.articles_schemas import ArticleListing
 from app.schemas.signals_schemas import SignalListing
-
 from app.models.models import GenderType
-
-class TownList(BaseModel):
-    id: str
-    name: str
-    country_id: str
-    refnumber: str
-    active: bool
-    class Config:
-        from_attributes = True  #
+from app.schemas.utils_schemas import UserInfo, TownList
+  
 class User(BaseModel):
     phone: str
     town_id: str
@@ -36,7 +27,11 @@ class UserListing(User):
     id: str
     refnumber: str
     active: bool
+    created_by: Optional[constr(max_length=256)] = None
+    updated_by: Optional[constr(max_length=256)] = None
     town : Optional[TownList]
+    creator: Optional[UserInfo] = None
+    updator: Optional[UserInfo] = None
    
     class Config:
         from_attributes = True 

@@ -4,15 +4,9 @@ from enum import Enum
 from typing import Optional, List
 from app.schemas.users_schemas import UserListing
 from app.schemas.articles_schemas import ArticleListing
+from app.schemas.utils_schemas import UserInfo, CountryList
 
 
-class CountryList(BaseModel):
-    id: str
-    name: str
-    refnumber: str
-    active: bool
-    class Config:
-        from_attributes = True  #
 class Town(BaseModel):
     name: str
     country_id: str
@@ -29,6 +23,10 @@ class TownListing(Town):
     refnumber: str
     active: bool
     country: CountryList
+    created_by: Optional[constr(max_length=256)] = None
+    updated_by: Optional[constr(max_length=256)] = None
+    creator: Optional[UserInfo] = None
+    updator: Optional[UserInfo] = None
     
     
     class Config:

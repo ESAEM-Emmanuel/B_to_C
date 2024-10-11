@@ -3,7 +3,9 @@ from datetime import datetime, date
 from enum import Enum
 from typing import Optional, List
 from app.schemas.articles_schemas import ArticleListing
+from app.schemas.utils_schemas import UserInfo
 
+        
 class ArticleStatus(BaseModel):
     name: str
     description: str = Field(..., max_length=65535)
@@ -17,6 +19,10 @@ class ArticleStatusListing(ArticleStatusCreate):
     id: str
     refnumber: str
     active: bool
+    created_by: Optional[constr(max_length=256)] = None
+    updated_by: Optional[constr(max_length=256)] = None
+    creator: Optional[UserInfo] = None
+    updator: Optional[UserInfo] = None
     
     class Config:
         from_attributes = True 

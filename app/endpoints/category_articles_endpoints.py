@@ -30,15 +30,16 @@ async def create_category(new_category_c: category_aticles_schemas.CategoryArtic
         raise HTTPException(status_code=403, detail="This type product also exists !")
     
     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-    concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
+    # concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
     NUM_REF = 10001
     codefin = datetime.now().strftime("%m/%Y")
     concatenated_num_ref = str(
             NUM_REF + len(db.query(models.CategoryArticle).filter(models.CategoryArticle.refnumber.endswith(codefin)).all())) + "/" + codefin
-    
+    new_category_c.name = new_category_c.name.lower()
+    new_category_c.description = new_category_c.description.lower()
     author = current_user.id
     
-    new_category_= models.CategoryArticle(id = concatenated_uuid, **new_category_c.dict(), refnumber = concatenated_num_ref, created_by = author)
+    new_category_= models.CategoryArticle(id = str(uuid.uuid4()), **new_category_c.dict(), refnumber = concatenated_num_ref, created_by = author)
     
     try:
         db.add(new_category_ )# pour ajouter une tuple
@@ -51,17 +52,83 @@ async def create_category(new_category_c: category_aticles_schemas.CategoryArtic
     return jsonable_encoder(new_category_)
 
 # Get all type products requests
-@router.get("/get_all_actif/", response_model=List[category_aticles_schemas.CategoryArticleListing])
-async def read_category_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    
-    categorys_queries = db.query(models.CategoryArticle).filter(models.CategoryArticle.active == "True").order_by(models.CategoryArticle.name).offset(skip).limit(limit).all()
-    
-                        
-    return jsonable_encoder(categorys_queries)
+
+@router.get("/")
+async def get_all_category_articles(skip: int = 0, limit: int = 100, active: Optional[bool] = None, db: Session = Depends(get_db)):
+    try:
+        query = db.query(models.CategoryArticle)
+
+        # Filtrer par actif/inactif si fourni
+        if active is not None:
+            query = query.filter(models.CategoryArticle.active == active)
+            
+        if limit ==-1:
+            query = query.filter(models.CategoryArticle.active == active)
+            serialized_category_articles = [category_aticles_schemas.CategoryArticleListing.from_orm(country) for country in category_articles]
+            return {
+                "category_articles": jsonable_encoder(serialized_category_articles)
+            }
+
+        total_category_articles = query.count()  # Nombre total de pays
+
+        # Pagination
+        category_articles = query.order_by(models.CategoryArticle.name).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_category_articles / limit) if limit > 0 else 1
+
+        serialized_category_articles = [category_aticles_schemas.CategoryArticleListing.from_orm(country) for country in category_articles]
+
+        return {
+            "category_articles": jsonable_encoder(serialized_category_articles),
+            "total_category_articles": total_category_articles,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@router.get("/search/")
+async def search_category_articles(
+    name: Optional[str] = None,
+    active: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(models.CategoryArticle)
+
+        # Filtrer par nom si fourni
+        if name:
+            query = query.filter(models.CategoryArticle.name.contains(name.lower()))
+
+        # Filtrer par statut actif/inactif
+        if active is not None:
+            query = query.filter(models.CategoryArticle.active == active)
+
+        # Pagination
+        total_category_articles = query.count()  # Nombre total de pays
+
+        # Pagination
+        category_articles = query.order_by(models.CategoryArticle.name).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_category_articles / limit) if limit > 0 else 1
+
+        serialized_category_articles = [category_aticles_schemas.CategoryArticleListing.from_orm(country) for country in category_articles]
+
+        return {
+            "category_articles": jsonable_encoder(serialized_category_articles),
+            "total_category_articles": total_category_articles,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
 # Get an category
-@router.get("/get/{category_id}", status_code=status.HTTP_200_OK, response_model=category_aticles_schemas.CategoryArticleDetail)
+@router.get("/{category_id}", status_code=status.HTTP_200_OK, response_model=category_aticles_schemas.CategoryArticleDetail)
 async def detail_category(category_id: str, db: Session = Depends(get_db)):
     category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id, models.CategoryArticle.active == "True").first()
     if not category_query:
@@ -74,24 +141,8 @@ async def detail_category(category_id: str, db: Session = Depends(get_db)):
     return jsonable_encoder(category_query)
 
 
-
-
-# Get an category
-# "/get_category_impersonal/?name=value_name&description=valeur_description" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.
-@router.get("/get_category_by_attribute/", status_code=status.HTTP_200_OK, response_model=List[category_aticles_schemas.CategoryArticleListing])
-async def detail_category_by_attribute(name: Optional[str] = None, description: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    category_query = {} # objet vide
-    if name is not None :
-        category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.name.contains(name), models.CategoryArticle.active == "True").order_by(models.CategoryArticle.name).offset(skip).limit(limit).all()
-    if description is not None :
-        category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.description.contains(description), models.CategoryArticle.active == "True").order_by(models.CategoryArticle.name).offset(skip).limit(limit).all()
-       
-    return jsonable_encoder(category_query)
-
-
-
 # update an type product request
-@router.put("/update/{category_id}", status_code=status.HTTP_200_OK, response_model = category_aticles_schemas.CategoryArticleDetail)
+@router.put("/{category_id}", status_code=status.HTTP_200_OK, response_model = category_aticles_schemas.CategoryArticleDetail)
 async def update_category(category_id: str, category_update: category_aticles_schemas.CategoryArticleUpdate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
         
     category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id).first()
@@ -146,15 +197,6 @@ async def delete_category(category_id: str,  db: Session = Depends(get_db), curr
     
     
     return {"message": "family card deleted!"}
-
-
-# Get all category inactive requests
-@router.get("/get_all_inactive/", response_model=List[category_aticles_schemas.CategoryArticleListing])
-async def read_categorys_inactive(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
-    
-    categorys_queries = db.query(models.CategoryArticle).filter(models.CategoryArticle.active == "False", ).order_by(models.CategoryArticle.name).offset(skip).limit(limit).all()
-                      
-    return jsonable_encoder(categorys_queries)
 
 
 # Restore category

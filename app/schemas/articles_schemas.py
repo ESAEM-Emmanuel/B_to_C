@@ -3,7 +3,8 @@ from datetime import datetime, date
 from enum import Enum
 from typing import Optional, List
 from app.schemas.signals_schemas import SignalListing
-
+from app.schemas.utils_schemas import UserInfo
+        
 class Article(BaseModel):
     name: str
     town_id: str
@@ -28,6 +29,10 @@ class ArticleListing(ArticleCreate):
     publish: bool = False
     locked: bool = False
     active: bool
+    created_by: Optional[constr(max_length=256)] = None
+    updated_by: Optional[constr(max_length=256)] = None
+    creator: Optional[UserInfo] = None
+    updator: Optional[UserInfo] = None
     
     class Config:
         from_attributes = True 

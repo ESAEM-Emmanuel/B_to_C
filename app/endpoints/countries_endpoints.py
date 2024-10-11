@@ -90,19 +90,19 @@ async def get_all_countries(skip: int = 0, limit: int = 100, active: Optional[bo
 
 @router.get("/search/")
 async def search_countries(
-    query: Optional[str] = None,
-    active: Optional[bool] = None,
     name: Optional[str] = None,
+    active: Optional[bool] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
+    # query: Optional[str] = None,
 ):
     try:
         country_query = db.query(models.Country)
 
         # Filtrer par nom si fourni
-        if query:
-            country_query = country_query.filter(models.Country.name.contains(query.lower()))
+        if name:
+            country_query = country_query.filter(models.Country.name.contains(name.lower()))
 
         # Filtrer par statut actif/inactif
         if active is not None:
