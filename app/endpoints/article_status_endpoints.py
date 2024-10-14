@@ -37,6 +37,8 @@ async def create_article_status(new_article_status_c: article_status_schemas.Art
             NUM_REF + len(db.query(models.ArticleStatus).filter(models.ArticleStatus.refnumber.endswith(codefin)).all())) + "/" + codefin
     
     author = current_user.id
+    new_article_status_c.name = new_article_status_c.name.lower()
+    new_article_status_c.description = new_article_status_c.description.lower()
     
     new_article_status= models.ArticleStatus(id = concatenated_uuid, **new_article_status_c.dict(), refnumber = concatenated_num_ref, created_by = author)
     
@@ -51,43 +53,153 @@ async def create_article_status(new_article_status_c: article_status_schemas.Art
     return jsonable_encoder(new_article_status)
 
 # Get all type articles statuss requests
-@router.get("/get_all_actif/", response_model=List[article_status_schemas.ArticleStatusListing])
-async def read_article_status_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("/")
+async def get_all_article_status(skip: int = 0, limit: int = 100, active: Optional[bool] = None, db: Session = Depends(get_db)):
     
-    article_status_queries = db.query(models.ArticleStatus).filter(models.ArticleStatus.active == "True").order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
-    
-                        
-    return jsonable_encoder(article_status_queries)
+    # article_status_queries = db.query(models.ArticleStatus).filter(models.ArticleStatus.active == "True").order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
+    try:
+        query = db.query(models.ArticleStatus)
 
+        # Filtrer par actif/inactif si fourni
+        if active is not None:
+            query = query.filter(models.ArticleStatus.active == active)
+            
+        if limit ==-1:
+            query = query.filter(models.ArticleStatus.active == active)
+            serialized_articles_status = [article_status_schemas.ArticleStatusListing.from_orm(country) for country in countries]
+            return {
+                "articles_status": jsonable_encoder(serialized_articles_status)
+            }
+
+        total_articles_status = query.count()  # Nombre total de pays
+
+        # Pagination
+        articles_status = query.order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_articles_status / limit) if limit > 0 else 1
+        
+        serialized_articles_status = []
+        for article_status in articles_status:
+            # serialized_countrie = [countries_schemas.CountryListing.from_orm(country) for country in countries]
+            serialized_article_status = article_status_schemas.ArticleStatusListing.from_orm(article_status)
+            if serialized_article_status.created_by :
+                # Récupération des détails du pays
+                creator_query = db.query(models.User).filter(models.User.id == article_status.created_by).first()
+                if not creator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {article_status.created_by} does not exist")
+                creator_serialized = article_status_schemas.UserInfo.from_orm(creator_query)
+                serialized_article_status.creator = creator_serialized
+            if serialized_article_status.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == article_status.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {article_status.updated_by} does not exist")
+                updator_serialized = article_status_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                serialized_article_status.updator = updator_serialized
+            serialized_articles_status.append(serialized_article_status)
+
+        return {
+            "articles_status": jsonable_encoder(serialized_articles_status),
+            "total_articles_status": total_articles_status,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    
+@router.get("/search/")
+async def search_articles_status(
+    name: Optional[str] = None,
+    active: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+    # query: Optional[str] = None,
+):
+    try:
+        query = db.query(models.ArticleStatus)
+
+        # Filtrer par nom si fourni
+        if name:
+            query = query.filter(models.ArticleStatus.name.contains(name.lower()))
+
+        # Filtrer par statut actif/inactif
+        if active is not None:
+            query = query.filter(models.ArticleStatus.active == active)
+        
+        # Pagination
+        total_articles_status = query.count()  # Nombre total de pays
+
+        # Pagination
+        articles_status = query.order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_articles_status / limit) if limit > 0 else 1
+        
+        serialized_articles_status = []
+        for article_status in articles_status:
+            # serialized_countrie = [countries_schemas.CountryListing.from_orm(country) for country in countries]
+            serialized_article_status = article_status_schemas.ArticleStatusListing.from_orm(article_status)
+            if serialized_article_status.created_by :
+                # Récupération des détails du pays
+                creator_query = db.query(models.User).filter(models.User.id == article_status.created_by).first()
+                if not creator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {article_status.created_by} does not exist")
+                creator_serialized = article_status_schemas.UserInfo.from_orm(creator_query)
+                serialized_article_status.creator = creator_serialized
+            if serialized_article_status.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == article_status.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {article_status.updated_by} does not exist")
+                updator_serialized = article_status_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                serialized_article_status.updator = updator_serialized
+            serialized_articles_status.append(serialized_article_status)
+
+        return {
+            "articles_status": jsonable_encoder(serialized_articles_status),
+            "total_articles_status": total_articles_status,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 # Get an article_status
 @router.get("/get/{article_status_id}", status_code=status.HTTP_200_OK, response_model=article_status_schemas.ArticleStatusDetail)
 async def detail_article_status(article_status_id: str, db: Session = Depends(get_db)):
-    article_status_query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id, models.ArticleStatus.active == "True").first()
-    if not article_status_query:
+    query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id, models.ArticleStatus.active == "True").first()
+    if not query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article_status with id: {article_status_id} does not exist")
     
-    articles = article_status_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
-    articles = details
+    articles = [{ 'id': article.id,
+                 'refnumber': article.refnumber,
+                 'name': article.name,
+                 'reception_place': article.reception_place,
+                 'category_article_id': article.category_article_id,
+                 'article_statu_id': article.article_statu_id,
+                 'description': article.description,
+                 'end_date': article.end_date,
+                 'price': article.price,
+                 'image_principal': article.image_principal,
+                 'owner_id': article.owner_id,
+                 'publish': article.publish,
+                 'locked': article.locked,
+                 'active': article.active} for article in query.articles]
     
-    return jsonable_encoder(article_status_query)
-
-
-
-
-# Get an article_status
-# "/get_article_status_impersonal/?name=value_name&description=valeur_description" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.
-@router.get("/get_article_status_by_attribute/", status_code=status.HTTP_200_OK, response_model=List[article_status_schemas.ArticleStatusListing])
-async def detail_article_status_by_attribute(name: Optional[str] = None, description: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    article_status_query = {} # objet vide
-    if name is not None :
-        article_status_query = db.query(models.ArticleStatus).filter(models.ArticleStatus.name.contains(name), models.ArticleStatus.active == "True").order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
-    if description is not None :
-        article_status_query = db.query(models.ArticleStatus).filter(models.ArticleStatus.description.contains(description), models.ArticleStatus.active == "True").order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
-       
-    return jsonable_encoder(article_status_query)
-
+    serialized_article_status = article_status_schemas.ArticleStatusDetail.from_orm(query)
+    if serialized_article_status.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.created_by} does not exist")
+        creator_serialized = article_status_schemas.UserInfo.from_orm(creator_query)
+        serialized_article_status.creator = creator_serialized
+    if serialized_article_status.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {query.updated_by} does not exist")
+        updator_serialized = article_status_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_article_status.updator = updator_serialized
+    
+    return jsonable_encoder(serialized_article_status)
 
 
 # update an type articles status request
@@ -144,15 +256,6 @@ async def delete_article_status(article_status_id: str,  db: Session = Depends(g
     
     
     return {"message": "status article deleted!"}
-
-
-# Get all article_status inactive requests
-@router.get("/get_all_inactive/", response_model=List[article_status_schemas.ArticleStatusListing])
-async def read_article_statuss_inactive(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
-    
-    article_status_queries = db.query(models.ArticleStatus).filter(models.ArticleStatus.active == "False", ).order_by(models.ArticleStatus.name).offset(skip).limit(limit).all()
-                        
-    return jsonable_encoder(article_status_queries)
 
 
 # Restore article_status

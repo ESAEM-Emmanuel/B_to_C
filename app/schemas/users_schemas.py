@@ -27,9 +27,9 @@ class UserListing(User):
     id: str
     refnumber: str
     active: bool
+    town : Optional[TownList]
     created_by: Optional[constr(max_length=256)] = None
     updated_by: Optional[constr(max_length=256)] = None
-    town : Optional[TownList]
     creator: Optional[UserInfo] = None
     updator: Optional[UserInfo] = None
    
@@ -41,9 +41,7 @@ class UserDetail(UserListing):
     image: str
     is_staff: bool
     created_at: datetime
-    created_by: Optional[constr(max_length=256)] = None
     updated_at: Optional[datetime] = None
-    updated_by: Optional[constr(max_length=256)] = None
     articles: List[ArticleListing]
     signals: List[SignalListing]
     

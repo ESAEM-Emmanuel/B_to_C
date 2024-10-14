@@ -29,9 +29,7 @@ class QuarterListing(Quarter):
 class QuarterDetail(QuarterListing):
     
     created_at: datetime
-    created_by: str
     updated_at: Optional[datetime] = None
-    updated_by: Optional[constr(max_length=256)] = None
     owners : List[UserListing]
     
     class Config:

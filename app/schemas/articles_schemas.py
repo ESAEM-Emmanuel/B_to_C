@@ -43,7 +43,6 @@ class ArticleDetail(ArticleListing):
     locked: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-    updated_by: Optional[constr(max_length=256)] = None
     signals: List[SignalListing]
     
     class Config:

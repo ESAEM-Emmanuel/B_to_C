@@ -34,9 +34,7 @@ class TownListing(Town):
 
 class TownDetail(TownListing):
     created_at: datetime
-    created_by: Optional[str] = None  # Optionnel si nécessaire
     updated_at: Optional[datetime] = None
-    updated_by: Optional[constr(max_length=256)] = None
     country: CountryList
     owners : List[UserListing]
     articles : List[ArticleListing]

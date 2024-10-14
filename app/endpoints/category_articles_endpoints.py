@@ -76,7 +76,23 @@ async def get_all_category_articles(skip: int = 0, limit: int = 100, active: Opt
 
         total_pages = ceil(total_category_articles / limit) if limit > 0 else 1
 
-        serialized_category_articles = [category_aticles_schemas.CategoryArticleListing.from_orm(country) for country in category_articles]
+        serialized_category_articles = []
+        for category_article in category_articles:
+            serialized_category_article = category_aticles_schemas.CategoryArticleListing.from_orm(category_article)
+            if category_article.created_by :
+                # Récupération des détails du pays
+                creator_query = db.query(models.User).filter(models.User.id == category_article.created_by).first()
+                if not creator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {category_article.created_by} does not exist")
+                creator_serialized = category_aticles_schemas.UserInfo.from_orm(creator_query)
+                serialized_category_article.creator = creator_serialized
+            if category_article.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == category_article.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {category_article.updated_by} does not exist")
+                updator_serialized = category_aticles_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                serialized_category_article.updator = updator_serialized
+            serialized_category_articles.append(serialized_category_article)
 
         return {
             "category_articles": jsonable_encoder(serialized_category_articles),
@@ -115,7 +131,23 @@ async def search_category_articles(
 
         total_pages = ceil(total_category_articles / limit) if limit > 0 else 1
 
-        serialized_category_articles = [category_aticles_schemas.CategoryArticleListing.from_orm(country) for country in category_articles]
+        serialized_category_articles = []
+        for category_article in category_articles:
+            serialized_category_article = category_aticles_schemas.CategoryArticleListing.from_orm(category_article)
+            if category_article.created_by :
+                # Récupération des détails du pays
+                creator_query = db.query(models.User).filter(models.User.id == category_article.created_by).first()
+                if not creator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {category_article.created_by} does not exist")
+                creator_serialized = category_aticles_schemas.UserInfo.from_orm(creator_query)
+                serialized_category_article.creator = creator_serialized
+            if category_article.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == category_article.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {category_article.updated_by} does not exist")
+                updator_serialized = category_aticles_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                serialized_category_article.updator = updator_serialized
+            serialized_category_articles.append(serialized_category_article)
 
         return {
             "category_articles": jsonable_encoder(serialized_category_articles),
@@ -130,50 +162,100 @@ async def search_category_articles(
 # Get an category
 @router.get("/{category_id}", status_code=status.HTTP_200_OK, response_model=category_aticles_schemas.CategoryArticleDetail)
 async def detail_category(category_id: str, db: Session = Depends(get_db)):
-    category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id, models.CategoryArticle.active == "True").first()
-    if not category_query:
+    query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id, models.CategoryArticle.active == "True").first()
+    if not query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"category with id: {category_id} does not exist")
     
-    articles = category_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
-    articles = details
+    articles = [{ 'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_statu_id': article.article_statu_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'image_principal': article.image_principal,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active} for article in query.articles]
+    serialized_category_article = category_aticles_schemas.CategoryArticleDetail.from_orm(query)
+    if serialized_category_article.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.created_by} does not exist")
+        creator_serialized = category_aticles_schemas.UserInfo.from_orm(creator_query)
+        serialized_category_article.creator = creator_serialized
+    if serialized_category_article.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.updated_by} does not exist")
+        updator_serialized = category_aticles_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_category_article.updator = updator_serialized
     
-    return jsonable_encoder(category_query)
+    return jsonable_encoder(serialized_category_article)
 
 
 # update an type product request
 @router.put("/{category_id}", status_code=status.HTTP_200_OK, response_model = category_aticles_schemas.CategoryArticleDetail)
 async def update_category(category_id: str, category_update: category_aticles_schemas.CategoryArticleUpdate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
         
-    category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id).first()
+    query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id).first()
 
-    if not category_query:
+    if not query:
             
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"category with id: {category_id} does not exist")
     else:
         
-        category_query.updated_by =  current_user.id
+        query.updated_by =  current_user.id
         
         if category_update.name:
-            category_query.name = category_update.name
+            query.name = category_update.name.lower()
         if category_update.description:
-            category_query.description = category_update.description
+            query.description = category_update.description.lower()
         if category_update.image:
-            category_query.image = category_update.image
+            query.image = category_update.image
         
     try:
         db.commit() # pour faire l'enregistrement
-        db.refresh(category_query)# pour renvoyer le résultat
+        db.refresh(query)# pour renvoyer le résultat
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process , pleace try later sorry!")
     
-    category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id).first()
-    articles = category_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
-    articles = details
-       
-    return jsonable_encoder(category_query)
+    query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id).first()
+    articles = [{ 'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_statu_id': article.article_statu_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'image_principal': article.image_principal,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active} for article in query.articles]
+    serialized_category_article = category_aticles_schemas.CategoryArticleDetail.from_orm(query)
+    if serialized_category_article.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.created_by} does not exist")
+        creator_serialized = category_aticles_schemas.UserInfo.from_orm(creator_query)
+        serialized_category_article.creator = creator_serialized
+    if serialized_category_article.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.updated_by} does not exist")
+        updator_serialized = category_aticles_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_category_article.updator = updator_serialized
+    
+    return jsonable_encoder(serialized_category_article)
 
 
 # delete type product
@@ -200,24 +282,53 @@ async def delete_category(category_id: str,  db: Session = Depends(get_db), curr
 
 
 # Restore category
-@router.patch("/restore/{category_id}", status_code = status.HTTP_200_OK,response_model = category_aticles_schemas.CategoryArticleListing)
+@router.patch("/restore/{category_id}", status_code = status.HTTP_200_OK,response_model = category_aticles_schemas.CategoryArticleDetail)
 async def restore_category(category_id: str,  db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
     
-    category_query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id, models.CategoryArticle.active == "False").first()
+    query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id, models.CategoryArticle.active == "False").first()
     
-    if not category_query:
+    if not query:
             
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"category with id: {category_id} does not exist")
         
-    category_query.active = True
-    category_query.updated_by =  current_user.id
+    query.active = True
+    query.updated_by =  current_user.id
     
     try:  
         db.commit() # pour faire l'enregistrement
-        db.refresh(category_query)# pour renvoyer le résultat
+        db.refresh(query)# pour renvoyer le résultat
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
     
+    query = db.query(models.CategoryArticle).filter(models.CategoryArticle.id == category_id).first()
+    articles = [{ 'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_statu_id': article.article_statu_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'image_principal': article.image_principal,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active} for article in query.articles]
+    serialized_category_article = category_aticles_schemas.CategoryArticleDetail.from_orm(query)
+    if serialized_category_article.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.created_by} does not exist")
+        creator_serialized = category_aticles_schemas.UserInfo.from_orm(creator_query)
+        serialized_category_article.creator = creator_serialized
+    if serialized_category_article.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.updated_by} does not exist")
+        updator_serialized = category_aticles_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_category_article.updator = updator_serialized
     
-    return jsonable_encoder(category_query)
+    return jsonable_encoder(serialized_category_article)

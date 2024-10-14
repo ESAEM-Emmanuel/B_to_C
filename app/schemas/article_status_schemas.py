@@ -15,7 +15,7 @@ class ArticleStatus(BaseModel):
 class ArticleStatusCreate(ArticleStatus):
    pass
 
-class ArticleStatusListing(ArticleStatusCreate):
+class ArticleStatusListing(ArticleStatus):
     id: str
     refnumber: str
     active: bool
@@ -28,11 +28,8 @@ class ArticleStatusListing(ArticleStatusCreate):
         from_attributes = True 
 
 class ArticleStatusDetail(ArticleStatusListing):
-    
     created_at: datetime
-    created_by: str
     updated_at: Optional[datetime] = None
-    updated_by: Optional[constr(max_length=256)] = None
     articles: List[ArticleListing]
     
     class Config:
