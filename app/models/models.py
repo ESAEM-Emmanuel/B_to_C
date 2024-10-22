@@ -1,4 +1,4 @@
-from sqlalchemy import Enum,Column, Integer, String, Double, TIMESTAMP, Date, Boolean, DateTime, text,ForeignKey,ARRAY
+from sqlalchemy import Enum,Column, Float, Integer, String, Double, TIMESTAMP, Date, Boolean, DateTime, text,ForeignKey,ARRAY
 from sqlalchemy.sql import func
 from app.database import Base
 from sqlalchemy.orm import relationship
@@ -25,8 +25,9 @@ class User(Base):
     password = Column(String(length=256), index=True)
     is_staff = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)  # Clé étrangère vers la même table
+    updated_by = Column(String, nullable=True)  # Clé étrangère vers la même table
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
     town_id = Column(String, ForeignKey(
@@ -36,6 +37,8 @@ class User(Base):
     # Colonnes étrangères inversées
     signals = relationship("Signal", back_populates="owner")
     articles = relationship("Article", back_populates="owner")
+
+    
  
 # Country : doing    
 class Country(Base):
@@ -45,8 +48,8 @@ class Country(Base):
     refnumber = Column(String, unique=True, nullable=False)
     name = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
     
@@ -63,8 +66,8 @@ class Town(Base):
     refnumber = Column(String, unique=True, nullable=False)
     name = Column(String, unique=False, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
     
@@ -88,8 +91,8 @@ class CategoryArticle(Base):
     description = Column(String(length=65535), nullable=False)
     image = Column(String, index=True, unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
     
@@ -105,13 +108,13 @@ class ArticleStatus(Base):
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String(length=65535), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
     
     # Colonnes étrangères inversées
-    articles = relationship("Article", back_populates="article_statu")
+    articles = relationship("Article", back_populates="article_status")
     
 # Product : doing     
 class Article(Base):
@@ -125,7 +128,7 @@ class Article(Base):
     price = Column(Double, nullable=True)
     main_image = Column(String, index=True, unique=True, nullable=False)
     other_images = Column(ARRAY(String), index=True, nullable=True) 
-    end_date = Column(DateTime)
+    end_date = Column(Date)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     updated_by = Column(String, nullable=True)
@@ -142,9 +145,9 @@ class Article(Base):
     category_article_id = Column(String, ForeignKey(
         "categorie_articles.id", ondelete="CASCADE"), nullable=False)
     category = relationship("CategoryArticle", back_populates="articles")
-    article_statu_id = Column(String, ForeignKey(
+    article_status_id = Column(String, ForeignKey(
         "article_status.id", ondelete="CASCADE"), nullable=False)
-    article_statu = relationship("ArticleStatus", back_populates="articles")# il s'agit des éléments en cour appartenant à la tables article_status
+    article_status = relationship("ArticleStatus", back_populates="articles")# il s'agit des éléments en cour appartenant à la tables article_status
     # Colonnes étrangères inversées
     signals = relationship("Signal", back_populates="article")
     
@@ -165,9 +168,7 @@ class Signal(Base):
     description = Column(String(length=65535), nullable=False)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String, nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     updated_by = Column(String, nullable=True)
     active = Column(Boolean, default=True)
-    
-
+ 

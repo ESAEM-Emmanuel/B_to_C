@@ -22,49 +22,98 @@ models.Base.metadata.create_all(bind=engine)
 
 router = APIRouter(prefix = "/user", tags=['Users Requests'])
 
-# create a new user
-@router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=users_schemas.UserListing)
-# async def create_user(new_user_c: users_schemas.UserCreate, file: UploadFile = File(...), db: Session = Depends(get_db)):
-async def create_user(new_user_c: users_schemas.UserCreate, db: Session = Depends(get_db)):
-    # Vérifiez si l'utilisateur existe déjà dans la base de données
-    if new_user_c.username:
-        if db.query(models.User).filter(models.User.username == new_user_c.username.lower()).first():
-            raise HTTPException(status_code=400, detail='Registered user with this username')
-    if new_user_c.phone:
-        if db.query(models.User).filter(models.User.phone == new_user_c.phone).first():
-            raise HTTPException(status_code=400, detail='Registered user with this phone number')
-    if new_user_c.email:
-        if db.query(models.User).filter(models.User.email == new_user_c.email).first():
-            raise HTTPException(status_code=400, detail='Registered user with this email')
-    if new_user_c.image:
-        if db.query(models.User).filter(models.User.image == new_user_c.image).first():
-            raise HTTPException(status_code=400, detail='Registered user with this image')
+# # create a new user
+# @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=users_schemas.UserListing)
+# # async def create_user(new_user_c: users_schemas.UserCreate, file: UploadFile = File(...), db: Session = Depends(get_db)):
+# async def create_user(new_user_c: users_schemas.UserCreate, db: Session = Depends(get_db)):
+#     # Vérifiez si l'utilisateur existe déjà dans la base de données
+#     if new_user_c.username:
+#         if db.query(models.User).filter(models.User.username == new_user_c.username.lower()).first():
+#             raise HTTPException(status_code=400, detail='Registered user with this username')
+#     if new_user_c.phone:
+#         if db.query(models.User).filter(models.User.phone == new_user_c.phone).first():
+#             raise HTTPException(status_code=400, detail='Registered user with this phone number')
+#     if new_user_c.email:
+#         if db.query(models.User).filter(models.User.email == new_user_c.email).first():
+#             raise HTTPException(status_code=400, detail='Registered user with this email')
+#     if new_user_c.image:
+#         if db.query(models.User).filter(models.User.image == new_user_c.image).first():
+#             raise HTTPException(status_code=400, detail='Registered user with this image')
     
-    formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-    concatenated_uuid = str(uuid.uuid4())#+ ":" + formated_date
+#     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
+#     concatenated_uuid = str(uuid.uuid4())#+ ":" + formated_date
+#     NUM_REF = 10001
+#     codefin = datetime.now().strftime("%m/%Y")
+#     new_user_c.username = new_user_c.username.lower()
+       
+#     concatenated_num_ref = str(
+#             NUM_REF + len(db.query(models.User).filter(models.User.refnumber.endswith(codefin)).all())) + "/" + codefin
+#     hashed_password = hash(new_user_c.password)
+#     new_user_c.password = hashed_password
+    
+#     author = "current_user"
+    
+#     new_user= models.User(id = concatenated_uuid, **new_user_c.dict(), refnumber = concatenated_num_ref, created_by = author)
+    
+#     try:
+#         db.add(new_user )# pour ajouter une tuple
+#         db.commit() # pour faire l'enregistrement
+#         db.refresh(new_user)# pour renvoyer le résultat
+#     except SQLAlchemyError as e:
+#         db.rollback()
+#         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
+    
+#     return jsonable_encoder(new_user)
+
+@router.post("/create/", status_code=status.HTTP_201_CREATED, response_model=users_schemas.UserListing)
+async def create_user(
+    new_user_c: users_schemas.UserCreate, 
+    db: Session = Depends(get_db), 
+    current_user: Optional[models.User] = Depends(oauth2.get_current_user_optional)  # Auth facultative
+):
+    # Vérifie si l'utilisateur existe déjà
+    user_exist = db.query(models.User).filter(
+        (models.User.username == new_user_c.username.lower()) |
+        (models.User.phone == new_user_c.phone) |
+        (models.User.email == new_user_c.email) |
+        (models.User.image == new_user_c.image)
+    ).first()
+
+    if user_exist:
+        raise HTTPException(status_code=400, detail="User already exists with these credentials.")
+
+    # Générer un identifiant unique et un refnumber
+    concatenated_uuid = str(uuid.uuid4())
     NUM_REF = 10001
     codefin = datetime.now().strftime("%m/%Y")
-    new_user_c.username = new_user_c.username.lower()
-       
     concatenated_num_ref = str(
-            NUM_REF + len(db.query(models.User).filter(models.User.refnumber.endswith(codefin)).all())) + "/" + codefin
+        NUM_REF + len(db.query(models.User).filter(models.User.refnumber.endswith(codefin)).all())
+    ) + "/" + codefin
+
+    # Hashage du mot de passe
     hashed_password = hash(new_user_c.password)
     new_user_c.password = hashed_password
-    
-    author = "current_user"
-    
-    new_user= models.User(id = concatenated_uuid, **new_user_c.dict(), refnumber = concatenated_num_ref, created_by = author)
-    
-    try:
-        db.add(new_user )# pour ajouter une tuple
-        db.commit() # pour faire l'enregistrement
-        db.refresh(new_user)# pour renvoyer le résultat
-    except SQLAlchemyError as e:
-        db.rollback()
-        raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
-    
-    return jsonable_encoder(new_user)
 
+    # Si l'utilisateur est authentifié, utiliser son nom, sinon "Anonymous"
+    author = current_user.id if current_user else ""
+
+    # Créer un nouvel utilisateur
+    new_user = models.User(
+        id=concatenated_uuid, 
+        **new_user_c.dict(), 
+        refnumber=concatenated_num_ref, 
+        created_by=author
+    )
+
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=403, detail=f"An error occurred during the process: {str(e)}")
+
+    return new_user
 
 
 @router.get("/")
@@ -93,12 +142,12 @@ async def get_all_user(skip: int = 0, limit: int = 100, active: Optional[bool] =
 
             user_serialized = users_schemas.UserListing.from_orm(user)
             if user.town_id:
-                print("ok town_id")
                 town = db.query(models.Town).filter(models.Town.id == user.town_id).first()
                 town_serialized = users_schemas.TownList.from_orm(town)
                 user_serialized.town = town_serialized  # Assigner la ville sérialisée à l'utilisateur
             if user.created_by :
                 # Récupération des détails du pays
+                print(user.creator.__dict__)
                 creator_query = db.query(models.User).filter(models.User.id == user.created_by).first()
                 if not creator_query:
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {user.created_by} does not exist")
@@ -219,7 +268,7 @@ async def detail_user(user_id: str, db: Session = Depends(get_db)):
                 'name': article.name,
                 'reception_place': article.reception_place, 
                 'category_article_id': article.category_article_id,
-                'article_statu_id': article.article_statu_id,
+                'article_status_id': article.article_status_id,
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
@@ -318,7 +367,7 @@ async def update_user(user_id: str, user_update: users_schemas.UserUpdate, db: S
                 'name': article.name,
                 'reception_place': article.reception_place, 
                 'category_article_id': article.category_article_id,
-                'article_statu_id': article.article_statu_id,
+                'article_status_id': article.article_status_id,
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
@@ -417,7 +466,7 @@ async def restore_user(user_id: str,  db: Session = Depends(get_db), current_use
                 'name': article.name,
                 'reception_place': article.reception_place, 
                 'category_article_id': article.category_article_id,
-                'article_statu_id': article.article_statu_id,
+                'article_status_id': article.article_status_id,
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,

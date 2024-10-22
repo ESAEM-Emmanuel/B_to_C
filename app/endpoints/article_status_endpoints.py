@@ -30,7 +30,7 @@ async def create_article_status(new_article_status_c: article_status_schemas.Art
         raise HTTPException(status_code=403, detail="This type articles status also exists !")
     
     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-    concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
+    # concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
     NUM_REF = 10001
     codefin = datetime.now().strftime("%m/%Y")
     concatenated_num_ref = str(
@@ -40,7 +40,7 @@ async def create_article_status(new_article_status_c: article_status_schemas.Art
     new_article_status_c.name = new_article_status_c.name.lower()
     new_article_status_c.description = new_article_status_c.description.lower()
     
-    new_article_status= models.ArticleStatus(id = concatenated_uuid, **new_article_status_c.dict(), refnumber = concatenated_num_ref, created_by = author)
+    new_article_status= models.ArticleStatus(id = str(uuid.uuid4()), **new_article_status_c.dict(), refnumber = concatenated_num_ref, created_by = author)
     
     try:
         db.add(new_article_status )# pour ajouter une tuple
@@ -163,7 +163,7 @@ async def search_articles_status(
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 # Get an article_status
-@router.get("/get/{article_status_id}", status_code=status.HTTP_200_OK, response_model=article_status_schemas.ArticleStatusDetail)
+@router.get("/{article_status_id}", status_code=status.HTTP_200_OK, response_model=article_status_schemas.ArticleStatusDetail)
 async def detail_article_status(article_status_id: str, db: Session = Depends(get_db)):
     query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id, models.ArticleStatus.active == "True").first()
     if not query:
@@ -174,7 +174,7 @@ async def detail_article_status(article_status_id: str, db: Session = Depends(ge
                  'name': article.name,
                  'reception_place': article.reception_place,
                  'category_article_id': article.category_article_id,
-                 'article_statu_id': article.article_statu_id,
+                 'article_status_id': article.article_status_id,
                  'description': article.description,
                  'end_date': article.end_date,
                  'price': article.price,
@@ -203,36 +203,62 @@ async def detail_article_status(article_status_id: str, db: Session = Depends(ge
 
 
 # update an type articles status request
-@router.put("/update/{article_status_id}", status_code=status.HTTP_200_OK, response_model = article_status_schemas.ArticleStatusDetail)
+@router.put("/{article_status_id}", status_code=status.HTTP_200_OK, response_model = article_status_schemas.ArticleStatusDetail)
 async def update_article_status(article_status_id: str, article_status_update: article_status_schemas.ArticleStatusUpdate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
         
-    article_status_query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id).first()
+    query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id).first()
+    print("query :", query)
 
-    if not article_status_query:
+    if not query:
             
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article_status with id: {article_status_id} does not exist")
     else:
         
-        article_status_query.updated_by =  current_user.id
+        query.updated_by =  current_user.id
         
         if article_status_update.name:
-            article_status_query.name = article_status_update.name
+            query.name = article_status_update.name
         if article_status_update.description:
-            article_status_query.description = article_status_update.description
+            query.description = article_status_update.description
         
     try:
         db.commit() # pour faire l'enregistrement
-        db.refresh(article_status_query)# pour renvoyer le résultat
+        db.refresh(query)# pour renvoyer le résultat
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process , pleace try later sorry!")
     
-    article_status_query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id).first()
-    articles = article_status_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_statu_id': article.article_statu_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
-    articles = details
-       
-    return jsonable_encoder(article_status_query)
+    articles = [{ 'id': article.id,
+                 'refnumber': article.refnumber,
+                 'name': article.name,
+                 'reception_place': article.reception_place,
+                 'category_article_id': article.category_article_id,
+                 'article_status_id': article.article_status_id,
+                 'description': article.description,
+                 'end_date': article.end_date,
+                 'price': article.price,
+                 'image_principal': article.image_principal,
+                 'owner_id': article.owner_id,
+                 'publish': article.publish,
+                 'locked': article.locked,
+                 'active': article.active} for article in query.articles]
+    
+    serialized_article_status = article_status_schemas.ArticleStatusDetail.from_orm(query)
+    if serialized_article_status.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.created_by} does not exist")
+        creator_serialized = article_status_schemas.UserInfo.from_orm(creator_query)
+        serialized_article_status.creator = creator_serialized
+    if serialized_article_status.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {query.updated_by} does not exist")
+        updator_serialized = article_status_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_article_status.updator = updator_serialized
+    
+    return jsonable_encoder(serialized_article_status)
 
 
 # delete type articles status
@@ -262,21 +288,50 @@ async def delete_article_status(article_status_id: str,  db: Session = Depends(g
 @router.patch("/restore/{article_status_id}", status_code = status.HTTP_200_OK,response_model = article_status_schemas.ArticleStatusListing)
 async def restore_article_status(article_status_id: str,  db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
     
-    article_status_query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id, models.ArticleStatus.active == "False").first()
+    query = db.query(models.ArticleStatus).filter(models.ArticleStatus.id == article_status_id, models.ArticleStatus.active == "False").first()
     
-    if not article_status_query:
+    if not query:
             
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article_status with id: {article_status_id} does not exist")
         
-    article_status_query.active = True
-    article_status_query.updated_by =  current_user.id
+    query.active = True
+    query.updated_by =  current_user.id
     
     try:  
         db.commit() # pour faire l'enregistrement
-        db.refresh(article_status_query)# pour renvoyer le résultat
+        db.refresh(query)# pour renvoyer le résultat
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
     
+    articles = [{ 'id': article.id,
+                 'refnumber': article.refnumber,
+                 'name': article.name,
+                 'reception_place': article.reception_place,
+                 'category_article_id': article.category_article_id,
+                 'article_status_id': article.article_status_id,
+                 'description': article.description,
+                 'end_date': article.end_date,
+                 'price': article.price,
+                 'image_principal': article.image_principal,
+                 'owner_id': article.owner_id,
+                 'publish': article.publish,
+                 'locked': article.locked,
+                 'active': article.active} for article in query.articles]
     
-    return jsonable_encoder(article_status_query)
+    serialized_article_status = article_status_schemas.ArticleStatusDetail.from_orm(query)
+    if serialized_article_status.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {query.created_by} does not exist")
+        creator_serialized = article_status_schemas.UserInfo.from_orm(creator_query)
+        serialized_article_status.creator = creator_serialized
+    if serialized_article_status.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Country with id: {query.updated_by} does not exist")
+        updator_serialized = article_status_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_article_status.updator = updator_serialized
+    
+    return jsonable_encoder(serialized_article_status)

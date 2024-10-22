@@ -1,5 +1,6 @@
 import os
 from fastapi import APIRouter, HTTPException, Depends, status, Request, File, UploadFile
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -36,13 +37,13 @@ async def create_signal(new_signal_c: signals_schemas.SignalCreate, db: Session 
     if not signals_queries:
         
         formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-        concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
+        concatenated_uuid = str(uuid.uuid4())#+ ":" + formated_date
         NUM_REF = 10001
         codefin = datetime.now().strftime("%m/%Y")
         concatenated_num_ref = str(
                 NUM_REF + len(db.query(models.Signal).filter(models.Signal.refnumber.endswith(codefin)).all())) + "/" + codefin
         
-        signals_queries= models.Signal(id = concatenated_uuid, **new_signal_c.dict(), refnumber = concatenated_num_ref, owner_id = author, created_by = author)
+        signals_queries= models.Signal(id = concatenated_uuid, **new_signal_c.dict(), refnumber = concatenated_num_ref, owner_id = author)
         
         try:
             db.add(signals_queries )# pour ajouter une tuple
@@ -66,38 +67,166 @@ async def create_signal(new_signal_c: signals_schemas.SignalCreate, db: Session 
     return jsonable_encoder(signals_queries)
 
 # Get all signals requests
-@router.get("/get_all_actif/", response_model=List[signals_schemas.SignalListing])
-async def read_signals_actif(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+@router.get("/")
+async def get_all_signals(skip: int = 0, limit: int = 100, active: Optional[bool] = None, db: Session = Depends(get_db)):
+    try:
+        query = db.query(models.Signal)
+
+        # Filtrer par actif/inactif si fourni
+        if active is not None:
+            query = query.filter(models.Signal.active == active)
+            
+        if limit ==-1:
+            query = query.filter(models.Signal.active == active)
+            serialized_signals = [signals_schemas.SignalListing.from_orm(signal) for signal in signals]
+            return {
+                "signals": jsonable_encoder(serialized_signals)
+            }
+
+        total_signals = query.count()  # Nombre total de pays
+
+        # Pagination
+        signals = query.order_by(desc(models.Signal.created_at)).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_signals / limit) if limit > 0 else 1
+        
+        serialized_signals = []
+        for signal in signals:
+            # serialized_countrie = [signals_schemas.SignalListing.from_orm(signal) for signal in signals]
+            serialized_signal = signals_schemas.SignalListing.from_orm(signal)
+            if signal.owner_id :
+                # Récupération des détails du pays
+                owner_query = db.query(models.User).filter(models.User.id == signal.owner_id).first()
+                if not owner_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {signal.created_by} does not exist")
+                owner_serialized = signals_schemas.UserInfo.from_orm(owner_query)
+                serialized_signal.owner = owner_serialized
+            if signal.article_id :
+                # Récupération des détails du pays
+                article_query = db.query(models.Article).filter(models.Article.id == signal.article_id).first()
+                if not article_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article with id: {signal.article_id} does not exist")
+                article_serialized = signals_schemas.ArticleList.from_orm(article_query)
+                serialized_signal.article = article_serialized
+            if signal.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == signal.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {signal.updated_by} does not exist")
+                updator_serialized = signals_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                serialized_signal.updator = updator_serialized
+            serialized_signals.append(serialized_signal)
+
+        return {
+            "signals": jsonable_encoder(serialized_signals),
+            "total_signals": total_signals,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
     
-    signals_queries = db.query(models.Signal).filter(models.Signal.active == "True").order_by(models.Signal.created_at).offset(skip).limit(limit).all()
-                      
-    return jsonable_encoder(signals_queries)
 
+@router.get("/search/")
+async def search_countries(
+    refnumber: Optional[str] = None,
+    article_id: Optional[str] = None,
+    owner_id: Optional[str] = None,
+    description: Optional[str] = None,
+    active: Optional[bool] = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(models.Signal)
 
+        # Filtrer par nom si fourni
+        if refnumber:
+            query = query.filter(models.Signal.refnumber.contains(refnumber))
+        if article_id:
+            query = query.filter(models.Signal.article_id.contains(article_id))
+        if owner_id:
+            query = query.filter(models.Signal.owner_id.contains(owner_id))
+        if description:
+            query = query.filter(models.Signal.description.contains(description.lower()))
+        # Filtrer par statut actif/inactif
+        if active is not None:
+            query = query.filter(models.Country.active == active)
+        
+        total_signals = query.count()  # Nombre total de pays
 
-# Get an signal
-# "/get_signal_impersonal/?refnumber=value_refnumber&phone=valeur_phone&email=valeur_email&signalname=valeur_signalname" : Retourne `{"param1": "value1", "param2": 42, "param3": null}`.
-@router.get("/get_signal_by_attribute/", status_code=status.HTTP_200_OK, response_model=List[signals_schemas.SignalListing])
-async def detail_signal_by_attribute(refnumber: Optional[str] = None, article_id: Optional[str] = None, owner_id: Optional[str] = None, description: Optional[str] = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    signal_query = {} # objet vide
-    if refnumber is not None :
-        signal_query = db.query(models.Signal).filter(models.Signal.refnumber == refnumber).order_by(models.Signal.created_at).offset(skip).limit(limit).all()
-    if owner_id is not None :
-        signal_query = db.query(models.Signal).filter(models.Signal.owner_id == owner_id).order_by(models.Signal.created_at).offset(skip).limit(limit).all()
-    if article_id is not None :
-        signal_query = db.query(models.Signal).filter(models.Signal.article_id == article_id).order_by(models.Signal.created_at).offset(skip).limit(limit).all()
-    if description is not None :
-        signal_query = db.query(models.Signal).filter(models.Signal.description == description).order_by(models.Signal.created_at).offset(skip).limit(limit).all()
-         
-    return jsonable_encoder(signal_query)
+        # Pagination
+        signals = query.order_by(desc(models.Signal.created_at)).offset(skip).limit(limit).all()
+
+        total_pages = ceil(total_signals / limit) if limit > 0 else 1
+        
+        serialized_signals = []
+        for signal in signals:
+            # serialized_countrie = [signals_schemas.SignalListing.from_orm(signal) for signal in signals]
+            serialized_signal = signals_schemas.SignalListing.from_orm(signal)
+            if signal.owner_id :
+                # Récupération des détails du pays
+                owner_query = db.query(models.User).filter(models.User.id == signal.owner_id).first()
+                if not owner_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {signal.created_by} does not exist")
+                owner_serialized = signals_schemas.UserInfo.from_orm(owner_query)
+                serialized_signal.owner = owner_serialized
+            if signal.article_id :
+                # Récupération des détails du pays
+                article_query = db.query(models.Article).filter(models.Article.id == signal.article_id).first()
+                if not article_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article with id: {signal.article_id} does not exist")
+                article_serialized = signals_schemas.ArticleList.from_orm(article_query)
+                serialized_signal.article = article_serialized
+            if signal.updated_by:
+                updator_query = db.query(models.User).filter(models.User.id == signal.updated_by).first()
+                if not updator_query:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {signal.updated_by} does not exist")
+                updator_serialized = signals_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+                serialized_signal.updator = updator_serialized
+            serialized_signals.append(serialized_signal)
+
+        return {
+            "signals": jsonable_encoder(serialized_signals),
+            "total_signals": total_signals,
+            "total_pages": total_pages,
+            "current_page": (skip // limit) + 1 if limit > 0 else 1
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
 
 # Get an signal
 @router.get("/get/{signal_id}", status_code=status.HTTP_200_OK, response_model=signals_schemas.SignalDetail)
 async def detail_signal(signal_id: str, db: Session = Depends(get_db)):
-    signal_query = db.query(models.Signal).filter(models.Signal.id == signal_id).first()
-    if not signal_query:
+    query = db.query(models.Signal).filter(models.Signal.id == signal_id).first()
+    if not query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {signal_id} does not exist")
-    return jsonable_encoder(signal_query)
+    
+    # serialized_countrie = [signals_schemas.SignalListing.from_orm(signal) for signal in signals]
+    serialized_signal = signals_schemas.SignalDetail.from_orm(query)
+    if query.owner_id :
+        # Récupération des détails du pays
+        owner_query = db.query(models.User).filter(models.User.id == query.owner_id).first()
+        if not owner_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {query.created_by} does not exist")
+        owner_serialized = signals_schemas.UserInfo.from_orm(owner_query)
+        serialized_signal.owner = owner_serialized
+    if query.article_id :
+        # Récupération des détails du pays
+        article_query = db.query(models.Article).filter(models.Article.id == query.article_id).first()
+        if not article_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"article with id: {query.article_id} does not exist")
+        article_serialized = signals_schemas.ArticleList.from_orm(article_query)
+        serialized_signal.article = article_serialized
+    if query.updated_by:
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"signal with id: {query.updated_by} does not exist")
+        updator_serialized = signals_schemas.UserInfo.from_orm(updator_query)  # Use updator_query here
+        serialized_signal.updator = updator_serialized
+        
+    return jsonable_encoder(serialized_signal)
 
 
 

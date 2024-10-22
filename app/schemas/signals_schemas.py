@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, PositiveInt, validator, root_validator
 from datetime import datetime, date
 from enum import Enum
 from typing import Optional
-from app.schemas.utils_schemas import UserInfo
+from app.schemas.utils_schemas import UserInfo, ArticleList
 class Signal(BaseModel):
     
     article_id: str
@@ -19,9 +19,9 @@ class SignalListing(Signal):
     refnumber: str
     owner_id: str
     active: bool
-    created_by: Optional[constr(max_length=256)] = None
     updated_by: Optional[constr(max_length=256)] = None
-    creator: Optional[UserInfo] = None
+    owner: Optional[UserInfo] = None
+    article: Optional[ArticleList] = None
     updator: Optional[UserInfo] = None
     
     class Config:
