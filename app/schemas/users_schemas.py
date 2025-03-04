@@ -69,6 +69,7 @@ class UserLogin(BaseModel):
    password: str
 
 class Token(BaseModel):
+    current_user: UserListing
     access_token: str
     token_type: str
 

@@ -20,50 +20,7 @@ models.Base.metadata.create_all(bind=engine)
 
 # /users/
 
-router = APIRouter(prefix = "/user", tags=['Users Requests'])
-
-# # create a new user
-# @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=users_schemas.UserListing)
-# # async def create_user(new_user_c: users_schemas.UserCreate, file: UploadFile = File(...), db: Session = Depends(get_db)):
-# async def create_user(new_user_c: users_schemas.UserCreate, db: Session = Depends(get_db)):
-#     # Vérifiez si l'utilisateur existe déjà dans la base de données
-#     if new_user_c.username:
-#         if db.query(models.User).filter(models.User.username == new_user_c.username.lower()).first():
-#             raise HTTPException(status_code=400, detail='Registered user with this username')
-#     if new_user_c.phone:
-#         if db.query(models.User).filter(models.User.phone == new_user_c.phone).first():
-#             raise HTTPException(status_code=400, detail='Registered user with this phone number')
-#     if new_user_c.email:
-#         if db.query(models.User).filter(models.User.email == new_user_c.email).first():
-#             raise HTTPException(status_code=400, detail='Registered user with this email')
-#     if new_user_c.image:
-#         if db.query(models.User).filter(models.User.image == new_user_c.image).first():
-#             raise HTTPException(status_code=400, detail='Registered user with this image')
-    
-#     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-#     concatenated_uuid = str(uuid.uuid4())#+ ":" + formated_date
-#     NUM_REF = 10001
-#     codefin = datetime.now().strftime("%m/%Y")
-#     new_user_c.username = new_user_c.username.lower()
-       
-#     concatenated_num_ref = str(
-#             NUM_REF + len(db.query(models.User).filter(models.User.refnumber.endswith(codefin)).all())) + "/" + codefin
-#     hashed_password = hash(new_user_c.password)
-#     new_user_c.password = hashed_password
-    
-#     author = "current_user"
-    
-#     new_user= models.User(id = concatenated_uuid, **new_user_c.dict(), refnumber = concatenated_num_ref, created_by = author)
-    
-#     try:
-#         db.add(new_user )# pour ajouter une tuple
-#         db.commit() # pour faire l'enregistrement
-#         db.refresh(new_user)# pour renvoyer le résultat
-#     except SQLAlchemyError as e:
-#         db.rollback()
-#         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
-    
-#     return jsonable_encoder(new_user)
+router = APIRouter(prefix = "/users", tags=['Users Requests'])
 
 @router.post("/create/", status_code=status.HTTP_201_CREATED, response_model=users_schemas.UserListing)
 async def create_user(
@@ -133,7 +90,6 @@ async def get_all_user(skip: int = 0, limit: int = 100, active: Optional[bool] =
             users = query.order_by(models.User.username).all()
 
         total_pages = ceil(total_users / limit) if limit > 0 else 1
-        print(users)
 
         # Récupérer les informations sur le pays via une jointure
         serialized_users = []
@@ -147,7 +103,6 @@ async def get_all_user(skip: int = 0, limit: int = 100, active: Optional[bool] =
                 user_serialized.town = town_serialized  # Assigner la ville sérialisée à l'utilisateur
             if user.created_by :
                 # Récupération des détails du pays
-                print(user.creator.__dict__)
                 creator_query = db.query(models.User).filter(models.User.id == user.created_by).first()
                 if not creator_query:
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {user.created_by} does not exist")
@@ -162,7 +117,7 @@ async def get_all_user(skip: int = 0, limit: int = 100, active: Optional[bool] =
             serialized_users.append(user_serialized)  # Ajouter l'utilisateur complet dans la liste
 
         return {
-            "towns": jsonable_encoder(serialized_users),
+            "users": jsonable_encoder(serialized_users),
             "total_users": total_users,
             "total_pages": total_pages,
             "current_page": (skip // limit) + 1 if limit > 0 else 1
@@ -218,7 +173,6 @@ async def search_users(
         total_users = query.count()  # Nombre total de villes
 
         total_pages = ceil(total_users / limit) if limit > 0 else 1
-        print(users)
 
         # Récupérer les informations sur le pays via une jointure
         serialized_users = []
@@ -245,7 +199,7 @@ async def search_users(
             serialized_users.append(user_serialized)  # Ajouter l'utilisateur complet dans la liste
 
         return {
-            "towns": jsonable_encoder(serialized_users),
+            "users": jsonable_encoder(serialized_users),
             "total_users": total_users,
             "total_pages": total_pages,
             "current_page": (skip // limit) + 1 if limit > 0 else 1
@@ -272,7 +226,7 @@ async def detail_user(user_id: str, db: Session = Depends(get_db)):
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
-                'image_principal': article.image_principal,
+                'main_image': article.main_image,
                 'owner_id': article.owner_id,
                 'publish': article.publish,
                 'locked': article.locked,
@@ -292,14 +246,15 @@ async def detail_user(user_id: str, db: Session = Depends(get_db)):
     # Construction de la réponse
     serialized_user = users_schemas.UserDetail.from_orm(query)
     
-    # Récupération des détails du pays
-    town_query = db.query(models.Town).filter(models.Town.id == query.town_id).first()
-    if not town_query:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {query.town_id} does not exist")
-    # Sérialisation de la ville
-    town_serialized = users_schemas.TownList.from_orm(town_query)
-    serialized_user.town = town_serialized
-    
+    if query.town_id:
+        # Récupération des détails du pays
+        town_query = db.query(models.Town).filter(models.Town.id == query.town_id).first()
+        if not town_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {query.town_id} does not exist")
+        # Sérialisation de la ville
+        town_serialized = users_schemas.TownList.from_orm(town_query)
+        serialized_user.town = town_serialized
+        
     if query.created_by :
         # Récupération des détails du pays
         creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
@@ -312,7 +267,7 @@ async def detail_user(user_id: str, db: Session = Depends(get_db)):
         updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
         if not updator_query:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
-        updator_serialized = users_schemas.UserInfo.from_orm(creator_query)
+        updator_serialized = users_schemas.UserInfo.from_orm(updator_query)
         serialized_user.updator = updator_serialized
     
     return jsonable_encoder(serialized_user)
@@ -371,7 +326,7 @@ async def update_user(user_id: str, user_update: users_schemas.UserUpdate, db: S
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
-                'image_principal': article.image_principal,
+                'main_image': article.main_image,
                 'owner_id': article.owner_id,
                 'publish': article.publish,
                 'locked': article.locked,
@@ -439,7 +394,7 @@ async def delete_user(user_id: str,  db: Session = Depends(get_db),current_user 
     return {"message": "User deleted!"}
 
 # Restore user
-@router.patch("/restore/{user_id}", status_code = status.HTTP_200_OK,response_model = users_schemas.UserDetail)
+@router.patch("/restore/{user_id}", status_code = status.HTTP_200_OK, response_model=users_schemas.UserDetail)
 async def restore_user(user_id: str,  db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
     
     query = db.query(models.User).filter(models.User.id == user_id, models.User.active == "False").first()
@@ -470,7 +425,7 @@ async def restore_user(user_id: str,  db: Session = Depends(get_db), current_use
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
-                'image_principal': article.image_principal,
+                'main_image': article.main_image,
                 'owner_id': article.owner_id,
                 'publish': article.publish,
                 'locked': article.locked,
@@ -486,18 +441,19 @@ async def restore_user(user_id: str,  db: Session = Depends(get_db), current_use
                 'active': signal.active
                 } for signal in query.signals]
     signals = details
-    
+
     # Construction de la réponse
     serialized_user = users_schemas.UserDetail.from_orm(query)
     
-    # Récupération des détails du pays
-    town_query = db.query(models.Town).filter(models.Town.id == query.town_id).first()
-    if not town_query:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {query.town_id} does not exist")
-    # Sérialisation de la ville
-    town_serialized = users_schemas.TownList.from_orm(town_query)
-    serialized_user.town = town_serialized
-    
+    if query.town_id:
+        # Récupération des détails du pays
+        town_query = db.query(models.Town).filter(models.Town.id == query.town_id).first()
+        if not town_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {query.town_id} does not exist")
+        # Sérialisation de la ville
+        town_serialized = users_schemas.TownList.from_orm(town_query)
+        serialized_user.town = town_serialized
+        
     if query.created_by :
         # Récupération des détails du pays
         creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
@@ -510,6 +466,7 @@ async def restore_user(user_id: str,  db: Session = Depends(get_db), current_use
         updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
         if not updator_query:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
-        updator_serialized = users_schemas.UserInfo.from_orm(creator_query)
+        updator_serialized = users_schemas.UserInfo.from_orm(updator_query)
         serialized_user.updator = updator_serialized
+    
     return jsonable_encoder(serialized_user)

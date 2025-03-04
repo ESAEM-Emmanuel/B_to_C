@@ -19,7 +19,7 @@ models.Base.metadata.create_all(bind=engine)
 
 # /towns/
 
-router = APIRouter(prefix = "/town", tags=['Towns Requests'])
+router = APIRouter(prefix = "/towns", tags=['Towns Requests'])
  
 # create a new town sheet
 @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=towns_schemas.TownListing)
@@ -28,7 +28,7 @@ async def create_town(new_town_c: towns_schemas.TownCreate, db: Session = Depend
     if  town_query:
         raise HTTPException(status_code=403, detail="This Town also existe!")
     formated_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")# Formatage de la date au format souhaité (par exemple, YYYY-MM-DD HH:MM:SS)
-    concatenated_uuid = str(uuid.uuid4())+ ":" + formated_date
+    concatenated_uuid = str(uuid.uuid4())# + ":" + formated_date
     NUM_REF = 10001
     codefin = datetime.now().strftime("%m/%Y")
     concatenated_num_ref = str(
@@ -64,6 +64,13 @@ async def get_all_town(skip: int = 0, limit: int = 100, active: Optional[bool] =
             towns = query.order_by(models.Town.name).offset(skip).limit(limit).all()
         else:
             towns = query.order_by(models.Town.name).all()
+            serialized_towns = []
+            for town in towns:
+                town_serialized = towns_schemas.TownListing.from_orm(town)
+                serialized_towns.append(town_serialized)
+            return {
+                "towns": jsonable_encoder(serialized_towns)
+            }
 
         total_pages = ceil(total_towns / limit) if limit > 0 else 1
 
@@ -135,6 +142,13 @@ async def search_towns(
             towns = query.order_by(models.Town.name).offset(skip).limit(limit).all()
         else:
             towns = query.order_by(models.Town.name).all()
+            serialized_towns = []
+            for town in towns:
+                town_serialized = towns_schemas.TownListing.from_orm(town)
+                serialized_towns.append(town_serialized)
+            return {
+                "towns": jsonable_encoder(serialized_towns)
+            }
 
         total_pages = ceil(total_towns / limit) if limit > 0 else 1
 
@@ -205,7 +219,7 @@ async def detail_town(town_id: str, db: Session = Depends(get_db)):
         'description': article.description, 
         'end_date': article.end_date, 
         'price': article.price, 
-        'image_principal': article.image_principal, 
+        'main_image': article.main_image, 
         'owner_id': article.owner_id, 
         'publish': article.publish, 
         'locked': article.locked, 
@@ -290,7 +304,7 @@ async def update_town(town_id: str, town_update: towns_schemas.TownUpdate, db: S
         'description': article.description, 
         'end_date': article.end_date, 
         'price': article.price, 
-        'image_principal': article.image_principal, 
+        'main_image': article.main_image, 
         'owner_id': article.owner_id, 
         'publish': article.publish, 
         'locked': article.locked, 
@@ -390,7 +404,7 @@ async def restore_town(town_id: str,  db: Session = Depends(get_db), current_use
         'description': article.description, 
         'end_date': article.end_date, 
         'price': article.price, 
-        'image_principal': article.image_principal, 
+        'main_image': article.main_image, 
         'owner_id': article.owner_id, 
         'publish': article.publish, 
         'locked': article.locked, 

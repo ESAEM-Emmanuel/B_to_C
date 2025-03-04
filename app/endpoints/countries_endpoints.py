@@ -25,7 +25,7 @@ router = APIRouter(prefix = "/countries", tags=['Countrys Requests'])
 # create a new country sheet
 @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=countries_schemas.CountryListing)
 async def create_country(new_country_c: countries_schemas.CountryCreate, db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
-    country_query = db.query(models.Country).filter(models.Country.name == new_country_c.name).first()
+    country_query = db.query(models.Country).filter(models.Country.name == new_country_c.name.lower()).first()
     if  country_query:
         raise HTTPException(status_code=403, detail="This country also existe!")
     
@@ -63,7 +63,8 @@ async def get_all_countries(skip: int = 0, limit: int = 100, active: Optional[bo
             query = query.filter(models.Country.active == active)
             
         if limit ==-1:
-            query = query.filter(models.Country.active == active)
+            countries = query.order_by(models.Country.name).all()
+            print("countries : ", countries)
             serialized_countries = [countries_schemas.CountryListing.from_orm(country) for country in countries]
             return {
                 "countries": jsonable_encoder(serialized_countries)

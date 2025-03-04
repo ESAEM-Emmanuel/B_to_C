@@ -65,8 +65,8 @@ async def get_all_article_status(skip: int = 0, limit: int = 100, active: Option
             query = query.filter(models.ArticleStatus.active == active)
             
         if limit ==-1:
-            query = query.filter(models.ArticleStatus.active == active)
-            serialized_articles_status = [article_status_schemas.ArticleStatusListing.from_orm(country) for country in countries]
+            articles_status = query.filter(models.ArticleStatus.active == active)
+            serialized_articles_status = [article_status_schemas.ArticleStatusListing.from_orm(article_status) for article_status in articles_status]
             return {
                 "articles_status": jsonable_encoder(serialized_articles_status)
             }
@@ -279,7 +279,6 @@ async def delete_article_status(article_status_id: str,  db: Session = Depends(g
     except SQLAlchemyError as e:
         db.rollback()
         raise HTTPException(status_code=403, detail="Somthing is wrong in the process, pleace try later sorry!")
-    
     
     return {"message": "status article deleted!"}
 

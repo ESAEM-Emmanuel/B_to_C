@@ -20,7 +20,7 @@ models.Base.metadata.create_all(bind=engine)
 
 # /categorys/
 
-router = APIRouter(prefix = "/category_artile", tags=['Category article Requests'])
+router = APIRouter(prefix = "/category_artiles", tags=['Category article Requests'])
  
 # create a new type product sheet
 @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=category_aticles_schemas.CategoryArticleListing)
@@ -175,7 +175,7 @@ async def detail_category(category_id: str, db: Session = Depends(get_db)):
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
-                'image_principal': article.image_principal,
+                'main_image': article.main_image,
                 'owner_id': article.owner_id,
                 'publish': article.publish,
                 'locked': article.locked,
@@ -235,7 +235,7 @@ async def update_category(category_id: str, category_update: category_aticles_sc
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
-                'image_principal': article.image_principal,
+                'main_image': article.main_image,
                 'owner_id': article.owner_id,
                 'publish': article.publish,
                 'locked': article.locked,
@@ -311,7 +311,7 @@ async def restore_category(category_id: str,  db: Session = Depends(get_db), cur
                 'description': article.description,
                 'end_date': article.end_date,
                 'price': article.price,
-                'image_principal': article.image_principal,
+                'main_image': article.main_image,
                 'owner_id': article.owner_id,
                 'publish': article.publish,
                 'locked': article.locked,

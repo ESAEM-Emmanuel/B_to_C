@@ -24,7 +24,7 @@ def toggle_boolean(value):
 
 # /signals/
 
-router = APIRouter(prefix = "/signal", tags=['Signals Requests'])
+router = APIRouter(prefix = "/signals", tags=['Signals Requests'])
  
 # create signal or dissignal
 @router.post("/create/", status_code = status.HTTP_201_CREATED, response_model=signals_schemas.SignalListing)

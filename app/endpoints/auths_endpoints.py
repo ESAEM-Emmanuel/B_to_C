@@ -19,46 +19,138 @@ from typing import List
 router = APIRouter(tags=['Authentication'])
 
 
-@router.post('/login', response_model=users_schemas.Token)
-def login(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+ 
+@router.post('/login')  
+def login(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):  
+    query = db.query(models.User).filter(  
+        models.User.username == user_credentials.username).first()  
 
-    user = db.query(models.User).filter(
-        models.User.username == user_credentials.username).first()
+    if not query:  
+        raise HTTPException(  
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials")  
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=f"Invalid Credentials")
+    if not oauth2.verify(user_credentials.password, query.password):  
+        raise HTTPException(  
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Credentials")  
 
-    if not oauth2.verify(user_credentials.password, user.password):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=f"Invalid Credentials")
+    access_token = oauth2.create_access_token(data={"user_id": query.id})  
 
+    articles = [{ 
+                'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_status_id': article.article_status_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'main_image': article.main_image,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active
+                } for article in query.articles]
     
+    signals = [{ 'id': signal.id,
+                'refnumber': signal.refnumber,
+                'owner_id': signal.owner_id,
+                'article_id': signal.article_id,
+                'description': signal.description,
+                'active': signal.active
+                } for signal in query.signals]
 
-    access_token = oauth2.create_access_token(data={"user_id": user.id})
+    # Construction de la réponse
+    serialized_user = users_schemas.UserListing.from_orm(query)
+    if query.town_id :
+        # Récupération des détails du pays
+        town_query = db.query(models.Town).filter(models.Town.id == query.town_id).first()
+        if not town_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {query.town_id} does not exist")
+        # Sérialisation de la ville
+        town_serialized = users_schemas.TownList.from_orm(town_query)
+        serialized_user.town = town_serialized
+    
+    if query.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.created_by} does not exist")
+        creator_serialized = users_schemas.UserInfo.from_orm(creator_query)
+        serialized_user.creator = creator_serialized
+    if query.updated_by :
+        # Récupération des détails du pays
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
+        updator_serialized = users_schemas.UserInfo.from_orm(creator_query)
+        serialized_user.updator = updator_serialized 
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"current_user": jsonable_encoder(serialized_user), "access_token": access_token, "token_type": "bearer"}
 
 
 # create a new anounce sheet
-@router.get("/get_user_by_token/", status_code = status.HTTP_200_OK, response_model=users_schemas.UserDetail)
+@router.get("/get_user_by_token/", status_code = status.HTTP_200_OK)
 async def get_user_by_token( db: Session = Depends(get_db), current_user : str = Depends(oauth2.get_current_user)):
     
     user_id = current_user.id
     
-    user_query = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user_query:
+    query = db.query(models.User).filter(models.User.id == user_id).first()
+    if not query:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id: {user_id} does not exist")
     
-    articles = user_query.articles
-    details = [{ 'id': article.id, 'refnumber': article.refnumber, 'name': article.name, 'reception_place': article.reception_place,  'category_article_id': article.category_article_id, 'article_status_id': article.article_status_id, 'description': article.description, 'end_date': article.end_date, 'price': article.price, 'image_principal': article.image_principal, 'owner_id': article.owner_id, 'publish': article.publish, 'locked': article.locked, 'active': article.active} for article in articles]
-    articles = details
+    articles = [{ 
+                'id': article.id,
+                'refnumber': article.refnumber,
+                'name': article.name,
+                'reception_place': article.reception_place, 
+                'category_article_id': article.category_article_id,
+                'article_status_id': article.article_status_id,
+                'description': article.description,
+                'end_date': article.end_date,
+                'price': article.price,
+                'main_image': article.main_image,
+                'owner_id': article.owner_id,
+                'publish': article.publish,
+                'locked': article.locked,
+                'active': article.active
+                } for article in query.articles]
     
-    signals = user_query.signals
-    details = [{ 'id': signal.id, 'refnumber': signal.refnumber, 'owner_id': signal.owner_id, 'article_id': signal.article_id, 'description': signal.description, 'active': signal.active} for signal in signals]
-    signals = details
+    signals = [{ 'id': signal.id,
+                'refnumber': signal.refnumber,
+                'owner_id': signal.owner_id,
+                'article_id': signal.article_id,
+                'description': signal.description,
+                'active': signal.active
+                } for signal in query.signals]
+
+    # Construction de la réponse
+    serialized_user = users_schemas.UserListing.from_orm(query)
+    if query.town_id :
+        # Récupération des détails du pays
+        town_query = db.query(models.Town).filter(models.Town.id == query.town_id).first()
+        if not town_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"town with id: {query.town_id} does not exist")
+        # Sérialisation de la ville
+        town_serialized = users_schemas.TownList.from_orm(town_query)
+        serialized_user.town = town_serialized
     
-    return jsonable_encoder(current_user)
+    if query.created_by :
+        # Récupération des détails du pays
+        creator_query = db.query(models.User).filter(models.User.id == query.created_by).first()
+        if not creator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.created_by} does not exist")
+        creator_serialized = users_schemas.UserInfo.from_orm(creator_query)
+        serialized_user.creator = creator_serialized
+    if query.updated_by :
+        # Récupération des détails du pays
+        updator_query = db.query(models.User).filter(models.User.id == query.updated_by).first()
+        if not updator_query:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"user with id: {query.updated_by} does not exist")
+        updator_serialized = users_schemas.UserInfo.from_orm(creator_query)
+        serialized_user.updator = updator_serialized 
+
+    return {"current_user": jsonable_encoder(serialized_user)}
 
 
 # @router.get("/user/{profil_id}/privileges", response_model=List[dict])
