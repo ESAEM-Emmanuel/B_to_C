@@ -2,13 +2,15 @@ from pydantic import BaseModel, EmailStr, PositiveInt, validator, root_validator
 from datetime import datetime, date
 from enum import Enum
 from typing import Optional
-from app.schemas.utils_schemas import UserInfo, ArticleList
+from app.schemas.utils_schemas import AnounceList, EntertainmentSiteList, ReelList, StoryList, UserInfo, EventList
+
 class Signal(BaseModel):
-    
-    article_id: str
-    description: str = Field(..., max_length=65535)
-    
-    
+    event_id: Optional[constr(max_length=256)] = None
+    anounce_id: Optional[constr(max_length=256)] = None
+    reel_id: Optional[constr(max_length=256)] = None
+    story_id: Optional[constr(max_length=256)] = None
+    entertainment_site_id: Optional[constr(max_length=256)] = None
+       
 
 class SignalCreate(Signal):
    pass
@@ -18,11 +20,19 @@ class SignalListing(Signal):
     id: str
     refnumber: str
     owner_id: str
-    active: bool
+    created_by: Optional[constr(max_length=256)] = None
     updated_by: Optional[constr(max_length=256)] = None
-    owner: Optional[UserInfo] = None
-    article: Optional[ArticleList] = None
+    creator: Optional[UserInfo] = None
     updator: Optional[UserInfo] = None
+    owner: Optional[UserInfo] = None
+    event: Optional[EventList] = None
+    anounce: Optional[AnounceList] = None
+    reel: Optional[ReelList] = None
+    story: Optional[StoryList] = None
+    entertainment_site: Optional[EntertainmentSiteList] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    active: bool
     
     class Config:
         from_attributes = True 
@@ -39,7 +49,10 @@ class SignalDetail(SignalListing):
 
 class SignalUpdate(BaseModel):
     owner_id: Optional[constr(max_length=256)] = None
-    article_id: Optional[constr(max_length=256)] = None
-    description: Optional[constr(max_length=65535)] = None
-
+    event_id: Optional[constr(max_length=256)] = None
+    anounce_id: Optional[constr(max_length=256)] = None
+    reel_id: Optional[constr(max_length=256)] = None
+    story_id: Optional[constr(max_length=256)] = None
+    entertainment_site_id: Optional[constr(max_length=256)] = None
+    
 

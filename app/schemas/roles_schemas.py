@@ -2,21 +2,25 @@
 # from datetime import datetime, date
 # from enum import Enum
 # from typing import Optional, List
-# from app.schemas.quarters_schemas import QuarterListing
-# from app.schemas.utils_schemas import UserInfo
+# from app.schemas.profil_roles_schemas import ProfilRoleListing
+# from app.schemas.privilege_roles_schemas import PrivilegeRoleListing
+# from app.schemas.utils_schemas import UserInfo, TownList
+# import re
 
-# class Town(BaseModel):
+# class Role(BaseModel):
 #     name: str
-#     Town_id: str
-    
+#     description: Optional[str] = Field(
+#         None,
+#         description="La description du rôle est util pour définir comprendre la fonctionnalité.",
+#     )
     
     
 
-# class TownCreate(Town):
+# class RoleCreate(Role):
 #    pass
 
 
-# class TownListing(Town):
+# class RoleListing(Role):
 #     id: str
 #     refnumber: str
 #     created_by: Optional[constr(max_length=256)] = None
@@ -25,26 +29,25 @@
 #     updator: Optional[UserInfo] = None
 #     active: bool
     
-    
 #     class Config:
 #         from_attributes = True 
 
-# class TownDetail(TownListing):
+# class RoleDetail(RoleListing):
     
 #     created_at: datetime
-#     updated_at: Optional[datetime] = None
-#     quaters : List[QuarterListing]
+#     created_by: str
+#     privilege_roles: List[PrivilegeRoleListing]
+#     profil_roles: List[ProfilRoleListing]
     
 #     class Config:
 #         from_attributes = True 
 #         # orm_mode = True 
         
 
-# class TownUpdate(BaseModel):
+# class RoleUpdate(BaseModel):
 #     name: Optional[constr(max_length=256)] = None
-#     Town_id: Optional[constr(max_length=256)] = None
-
-
+#     description: Optional[constr(max_length=65535)] = None
+    
 from pydantic import BaseModel, EmailStr, PositiveInt, validator, root_validator, constr,Field
 from datetime import datetime, date
 from enum import Enum
@@ -60,42 +63,47 @@ from app.schemas.utils_schemas import (
     BaseMixinSchema,
     TownSchema,
     PrivilegeRoleSchema,
-    UserInfo,
-    # PrivilegeSchema,
+    # CountrySchema,
     # CategoryArticleSchema,
     # ArticleStateSchema,
     # SubscriptionTypeSchema,
-    CountrySchema,
+    # PrivilegeSchema,
     # RoleSchema,
     )
 import re
 
 
 
-class Town(BaseModel):
+class Role(BaseModel):
     name: str
-    country_id: str
-
+    description: Optional[str] = Field(
+        None,
+        description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
+    )
     
 
 
-class TownCreate(Town):
+class RoleCreate(Role):
    pass
 
 
-class TownUpdate(BaseModel):
+class RoleUpdate(BaseModel):
     name: Optional[constr(max_length=256)] = None
-    country_id: Optional[constr(max_length=256)] = None
+    description: Optional[constr(max_length=65535)] = None
     
 
 
 # =============================== USER SCHEMA ===============================
-class TownSchema(BaseMixinSchema):
+class RoleSchema(BaseMixinSchema):
     name: str
-    country_id: str
-    country: CountrySchema = None
-    owners: List[UserInfo] = []  # Liste vide par défaut
-    articles: List[ArticleSchema] = []  # Liste vide par défaut
+    description: Optional[str] = Field(
+        None,
+        description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
+    )
+
+    
+    user_roles: List[UserRoleSchema] = []  # Liste vide par défaut
+    privilege_roles: List[PrivilegeRoleSchema] = []  # Liste vide par défaut
 
     class Config:
         from_attributes = True

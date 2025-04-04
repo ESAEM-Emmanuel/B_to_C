@@ -17,3 +17,6 @@ pillow
 python-multipart # gestion des médiat
 python-dotenv # gestion des variable d'environnement
 apscheduler # automatisation des tâches
+pydantic-settings #gérer les configurations
+pytest
+pytest-cov

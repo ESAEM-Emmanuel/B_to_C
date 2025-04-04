@@ -13,37 +13,47 @@ from app.schemas.utils_schemas import (
     BaseMixinSchema,
     TownSchema,
     PrivilegeRoleSchema,
-    # PrivilegeSchema,
+    # CountrySchema,
     # CategoryArticleSchema,
     # ArticleStateSchema,
     # SubscriptionTypeSchema,
-    CountrySchema,
+    # PrivilegeSchema,
     # RoleSchema,
     )
 import re
 
 
 
-class Country(BaseModel):
+class Privilege(BaseModel):
     name: str
-
+    description: Optional[str] = Field(
+        None,
+        description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
+    )
     
 
 
-class CountryCreate(Country):
+class PrivilegeCreate(Privilege):
    pass
 
 
-class CountryUpdate(BaseModel):
+class PrivilegeUpdate(BaseModel):
     name: Optional[constr(max_length=256)] = None
+    description: Optional[constr(max_length=65535)] = None
     
 
 
 # =============================== USER SCHEMA ===============================
-class CountrySchema(BaseMixinSchema):
+class PrivilegeSchema(BaseMixinSchema):
     name: str
+    description: Optional[str] = Field(
+        None,
+        description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
+    )
 
-    towns: List[TownSchema] = []  # Liste vide par défaut
+    
+    privilege_users: List[PrivilegeUserSchema] = []  # Liste vide par défaut
+    privilege_roles: List[PrivilegeRoleSchema] = []  # Liste vide par défaut
 
     class Config:
         from_attributes = True

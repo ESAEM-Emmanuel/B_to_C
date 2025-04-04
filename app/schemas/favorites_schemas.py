@@ -1,44 +1,47 @@
 from pydantic import BaseModel, EmailStr, PositiveInt, validator, root_validator, constr,Field
 from datetime import datetime, date
 from enum import Enum
-from typing import Optional, List
-from app.schemas.users_schemas import UserListing
-from app.schemas.utils_schemas import UserInfo
-        
-class Quarter(BaseModel):
-    name: str
-    town_id: str
-     
+from typing import Optional
 
-class QuarterCreate(Quarter):
+from app.schemas.utils_schemas import EntertainmentSiteList, UserInfo
+
+class Favorite(BaseModel):
+    entertainment_site_id: str
+    
+    
+
+class FavoriteCreate(Favorite):
    pass
 
 
-class QuarterListing(Quarter):
+class FavoriteListing(Favorite):
     id: str
     refnumber: str
-    active: bool
+    owner_id: str
     created_by: Optional[constr(max_length=256)] = None
     updated_by: Optional[constr(max_length=256)] = None
     creator: Optional[UserInfo] = None
     updator: Optional[UserInfo] = None
+    owner: Optional[UserInfo] = None
+    entertainment_site: Optional[EntertainmentSiteList] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    active: bool
     
     class Config:
         from_attributes = True 
 
-class QuarterDetail(QuarterListing):
+class FavoriteDetail(FavoriteListing):
     
     created_at: datetime
     updated_at: Optional[datetime] = None
-    owners : List[UserListing]
     
     class Config:
         from_attributes = True 
         # orm_mode = True 
         
 
-class QuarterUpdate(BaseModel):
-    name: Optional[constr(max_length=256)] = None
-    town_id: Optional[constr(max_length=256)] = None
+class FavoriteUpdate(BaseModel):
+    entertainment_site_id: Optional[constr(max_length=256)] = None
     
-    # active: bool = True
+

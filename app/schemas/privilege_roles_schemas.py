@@ -13,37 +13,46 @@ from app.schemas.utils_schemas import (
     BaseMixinSchema,
     TownSchema,
     PrivilegeRoleSchema,
-    # PrivilegeSchema,
+    # CountrySchema,
     # CategoryArticleSchema,
     # ArticleStateSchema,
     # SubscriptionTypeSchema,
-    CountrySchema,
-    # RoleSchema,
+    PrivilegeSchema,
+    RoleSchema,
     )
 import re
 
 
 
-class Country(BaseModel):
-    name: str
-
+class PrivilegeRole(BaseModel):
+    role_id: str = Field(
+        None,
+        role_id="Séléctionnez un rôle existant.",
+    )
+    privilege_id: str = Field(
+        None,
+        privilege_id="Séléctionnez un privilege existant.",
+    )
     
 
 
-class CountryCreate(Country):
+class PrivilegeRoleCreate(PrivilegeRole):
    pass
 
 
-class CountryUpdate(BaseModel):
-    name: Optional[constr(max_length=256)] = None
+class PrivilegeRoleUpdate(BaseModel):
+    role_id: Optional[constr(max_length=256)] = None
+    privilege_id: Optional[constr(max_length=256)] = None
     
 
 
 # =============================== USER SCHEMA ===============================
-class CountrySchema(BaseMixinSchema):
-    name: str
+class PrivilegeRoleSchema(BaseMixinSchema):
+    role_id: str
+    privilege_id: str
 
-    towns: List[TownSchema] = []  # Liste vide par défaut
+    role: RoleSchema
+    privilege: PrivilegeSchema
 
     class Config:
         from_attributes = True

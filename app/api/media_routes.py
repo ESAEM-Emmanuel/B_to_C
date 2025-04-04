@@ -1,14 +1,13 @@
 import os
 from fastapi import APIRouter, HTTPException, File, UploadFile
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from typing import List
 from datetime import datetime
 from PIL import Image
-from app import config_sething  # Importer les configurations serveur
+from app.config import settings  # Importez les configurations depuis settings
 
 # Définir le répertoire unique pour les fichiers médias
-MEDIA_PATHS = "medias"
+MEDIA_PATHS = settings.PARENT_MEDIA_NAME
 
 # Assurez-vous que le répertoire des médias existe
 if not os.path.exists(MEDIA_PATHS):
@@ -17,9 +16,8 @@ if not os.path.exists(MEDIA_PATHS):
 router = APIRouter(prefix="/medias", tags=['Medias Requests'])
 
 # Configuration de la route statique pour accéder aux fichiers médias
+router.mount("/static", StaticFiles(directory=MEDIA_PATHS), name="static")
 
-
-router.mount("/medias", StaticFiles(directory=MEDIA_PATHS), name="medias")
 @router.post("/uploadfiles/")
 async def create_upload_files(files: List[UploadFile] = File(...)):
     """Upload des fichiers médias et retour d'une liste d'URLs accessibles."""
@@ -29,18 +27,20 @@ async def create_upload_files(files: List[UploadFile] = File(...)):
     media_urls = []
     for file in files:
         try:
+            # Générer un nom de fichier unique basé sur la date et l'heure
+            filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f") + "_" + file.filename
+
             # Enregistrer les vidéos ou images
+            file_path = os.path.join(MEDIA_PATHS, filename)
             if file.filename.endswith(".mp4"):
-                filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f") + "_" + file.filename
-                with open(os.path.join(MEDIA_PATHS, filename), "wb") as video_file:
+                with open(file_path, "wb") as video_file:
                     video_file.write(file.file.read())
             else:
                 image = Image.open(file.file)
-                filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f") + "_" + file.filename
-                image.save(os.path.join(MEDIA_PATHS, filename))
+                image.save(file_path)
 
-            # Générer l'URL publique dynamique avec host et port depuis config_sething
-            file_url = f"http://{config_sething.server_host}:{config_sething.server_port}/static/{filename}"
+            # Générer l'URL publique dynamique avec host et port depuis settings
+            file_url = f"http://{settings.HOST}:{settings.PORT}/static/{filename}"
             media_urls.append(file_url)
 
         except Exception as e:

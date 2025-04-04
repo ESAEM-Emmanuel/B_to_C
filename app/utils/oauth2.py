@@ -3,27 +3,25 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, status, HTTPException
-from app.database import SessionLocal, engine, get_db
+from app.database import get_db
 from sqlalchemy.orm import Session
-
 from app.models import models as models
-from app.database import SessionLocal, engine, get_db
-from app.schemas.users_schemas import Token, TokenData
-from app import config_sething
+from app.schemas.users_schemas import TokenData
+from app.config import settings
+from passlib.context import CryptContext
+import logging
 
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
+
+logger = logging.getLogger(__name__)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login', auto_error=False)
 
-from passlib.context import CryptContext
 
-# SECRET_KEY
-# Algorithm
-# Expriation time
-
-SECRET_KEY = config_sething.secret_key
-ALGORITHM = config_sething.algorithm
-ACCESS_TOKEN_EXPIRE_MINUTES = config_sething.access_token_expire_minutes
-REFRESH_TOKEN_EXPIRE_DAYS = config_sething.refresh_token_expire_days
+class AuthConfig:
+    SECRET_KEY = settings.SECRET_KEY
+    ALGORITHM = settings.ALGORITHM
+    ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 
 def create_access_token(data: dict):
@@ -38,18 +36,24 @@ def create_access_token(data: dict):
 
 
 def verify_access_token(token: str, credentials_exception):
-
+    invalid_token = db.query(models.InvalidToken).filter_by(token=token).first()
+    if invalid_token:
+        raise credentials_exception
     try:
-
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         id: str = payload.get("user_id")
         if id is None or token in invalid_tokens:
             raise credentials_exception
         token_data = TokenData(id=id)
-    except JWTError:
+    except JWTError as e:
+        logger.error(f"JWTError: {e}")
         raise credentials_exception
-
     return token_data
+
+def invalidate_token(db: Session, token: str):
+    # Stocker le token invalide dans la base de données
+    db.add(models.InvalidToken(token=token))
+    db.commit()
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
@@ -88,15 +92,13 @@ def verify_access_token_optional(token: str):
     return token_data
 
 def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Optional[models.User]:
-    """
-    Récupère l'utilisateur authentifié si le token est valide, sinon retourne None.
-    """
     if not token:
         return None  # Aucun token fourni, utilisateur non authentifié
 
-    token_data = verify_access_token_optional(token)
-    if not token_data:
+    try:
+        token_data = verify_access_token(token, HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"))
+    except HTTPException:
         return None  # Si le token est invalide, retourne None
 
     user = db.query(models.User).filter(models.User.id == token_data.id).first()
-    return user  # Retourne l'utilisateur authentifié ou None si non trouvé
+    return user
