@@ -83,6 +83,8 @@ from app.api.privilege_user_routes import router as privilege_user_routes
 from app.api.user_role_routes import router as user_role_routes
 from app.api.country_routes import router as country_routes
 from app.api.town_routes import router as town_routes
+from app.api.category_article_routes import router as category_article_routes
+from app.api.article_state_routes import router as article_state_routes
 
 app.include_router(auth_routes)
 app.include_router(media_routes)
@@ -94,6 +96,8 @@ app.include_router(privilege_user_routes)
 app.include_router(user_role_routes)
 app.include_router(country_routes)
 app.include_router(town_routes)
+app.include_router(category_article_routes)
+app.include_router(article_state_routes)
 
 
 

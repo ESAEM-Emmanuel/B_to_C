@@ -14,47 +14,42 @@ from app.schemas.utils_schemas import (
     TownSchema,
     PrivilegeRoleSchema,
     # CountrySchema,
-    # PrivilegeSchema,
-    # ArticleStateSchema,
-    # SubscriptionTypeSchema,
     # CategoryArticleSchema,
+    # PrivilegeSchema,
+    # SubscriptionTypeSchema,
+    # ArticleStateSchema,
     # RoleSchema,
     )
 import re
 
 
 
-class CategoryArticle(BaseModel):
+class ArticleState(BaseModel):
     name: str
     description: Optional[str] = Field(
         None,
-        description="Faite une description au besoinn .",
-    )
-    image: Optional[str] = Field(
-        None,
-        description="Chargez une image au besoinn.",
+        description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
     )
     
 
 
-class CategoryArticleCreate(CategoryArticle):
+class ArticleStateCreate(ArticleState):
    pass
 
 
-class CategoryArticleUpdate(BaseModel):
+class ArticleStateUpdate(BaseModel):
     name: Optional[constr(max_length=256)] = None
     description: Optional[constr(max_length=65535)] = None
-    image: Optional[constr(max_length=256)] = None
     
 
+
 # =============================== USER SCHEMA ===============================
-class CategoryArticleSchema(BaseMixinSchema):
+class ArticleStateSchema(BaseMixinSchema):
     name: str
     description: Optional[str] = Field(
         None,
-        description="Description.",
+        description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
     )
-    image: Optional[constr(max_length=256)] = None
     
     articles: List[ArticleSchema] = []  # Liste vide par défaut
 
