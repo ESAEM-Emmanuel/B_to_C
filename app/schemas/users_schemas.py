@@ -136,7 +136,7 @@ class UserSchema(BaseMixinSchema):
     username: str
     phone: Optional[str] = None
     email: EmailStr
-    birthday: Optional[datetime] = None
+    birthday: Optional[date] = None
     gender: Optional[GenderType] = None
     image: Optional[str] = None
     is_staff: bool = False  # Valeur par défaut

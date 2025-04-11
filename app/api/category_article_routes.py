@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from app.schemas.category_aticles_schemas import (
+from app.schemas.category_articles_schemas import (
     CategoryArticleCreate,
     CategoryArticleUpdate,
     CategoryArticleSchema,)

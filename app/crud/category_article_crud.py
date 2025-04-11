@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from app.models.models import CategoryArticle
-from app.schemas.category_aticles_schemas import CategoryArticleCreate, CategoryArticleUpdate
+from app.schemas.category_articles_schemas import CategoryArticleCreate, CategoryArticleUpdate
 from app.utils.utils import (
     generate_unique_num_ref,
     )

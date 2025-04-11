@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from app.schemas.users_schemas import (
-    UserCreate,
-    UserUpdate,
-    UserSchema,)
-from app.schemas.utils_schemas import (PaginatedResponse, PaginationMetadata)
+from app.schemas.subscriptions_schemas import (
+    SubscriptionCreate,
+    SubscriptionUpdate,
+    SubscriptionSchema,)
+from app.schemas.utils_schemas import (PaginatedResponse,
+PaginationMetadata,
+SubscriptionTypeSchema,
+PaymentSchema,
+ArticleSchema,
+UserInfo,
+)
 from app.database import get_db
 from typing import Optional, List
 from datetime import date, datetime, time
-from app.models.models import GenderType
-from app.crud.user_crud import (
+from app.crud.subscription_crud import (
     research,
     create,
     update,
@@ -18,16 +23,16 @@ from app.crud.user_crud import (
     restore,
 )
 from app.utils.utils import verify,get_user_by_id
-
 from app.crud.auth_crud import (get_user_from_token_optional,
 get_user_from_token)
-router = APIRouter(prefix="/users", tags=["Users Requests"])
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserSchema)
+router = APIRouter(prefix="/subscriptions", tags=["Subscriptions Requests"])
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=SubscriptionSchema)
 async def create_route(
-    item: UserCreate, 
+    item: SubscriptionCreate, 
     db: Session = Depends(get_db), 
-    current_user: Optional[str] = Depends(get_user_from_token_optional)
+    current_user: Optional[str] = Depends(get_user_from_token)
 ):
     try:
         item = create(db, item, current_user.id if current_user else None)
@@ -35,8 +40,8 @@ async def create_route(
         creator = get_user_by_id(db, item.created_by) if item.created_by else None
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
-        # Retourne l'utilisateur avec le créateur sérialisé
-        return UserSchema.from_orm(item).copy(update={
+        # Retourne le Subscription avec le créateur sérialisé
+        return SubscriptionSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )
@@ -44,18 +49,22 @@ async def create_route(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=PaginatedResponse[UserSchema])  # Spécifiez UserSchema ici
+@router.get("/", response_model=PaginatedResponse[SubscriptionSchema])  # Spécifiez SubscriptionSchema ici
 async def research_route(
-    username: Optional[str] = Query(None),
+    owner_id: Optional[str] = Query(None),
+    subscription_type_id: Optional[str] = Query(None),
+    description: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    start_date_bis: Optional[date] = Query(None),
+    start_date_operation: Optional[str] = Query(None),
+    expiration_date: Optional[date] = Query(None),
+    expiration_date_bis: Optional[date] = Query(None),
+    expiration_date_operation: Optional[str] = Query(None),
+    remaining_advertisements: Optional[int] = Query(None),
+    remaining_advertisements_bis: Optional[int] = Query(None),
+    remaining_advertisements_operation: Optional[str] = Query(None),
+    is_read: Optional[bool] = Query(None),
     refnumber: Optional[str] = Query(None),
-    phone: Optional[str] = Query(None),
-    email: Optional[str] = Query(None),
-    birthday: Optional[date] = Query(None),
-    birthday_bis: Optional[date] = Query(None),
-    operation_birthday: Optional[str] = Query(None),
-    gender: Optional[GenderType] = Query(None),
-    town_id: Optional[str] = Query(None),
-    is_staff: Optional[bool] = Query(None),
     created_by: Optional[str] = Query(None),
     created_at: Optional[date] = Query(None),
     created_at_bis: Optional[date] = Query(None),
@@ -66,7 +75,7 @@ async def research_route(
     updated_at_operation: Optional[str] = Query(None),
     active: Optional[bool] = Query(None),
     order: str = "asc",
-    sort_by: str = "username",
+    sort_by: str = "created_at",
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -74,16 +83,20 @@ async def research_route(
     # Appel à la fonction de recherche
     items, total_records = research(
         db=db,
-        username=username,
+        owner_id=owner_id,
+        subscription_type_id=subscription_type_id,
+        description=description,
+        start_date=start_date,
+        start_date_bis=start_date_bis,
+        start_date_operation=start_date_operation,
+        expiration_date=expiration_date,
+        expiration_date_bis=expiration_date_bis,
+        expiration_date_operation=expiration_date_operation,
+        remaining_advertisements=remaining_advertisements,
+        remaining_advertisements_bis=remaining_advertisements_bis,
+        remaining_advertisements_operation=remaining_advertisements_operation,
+        is_read=is_read,
         refnumber=refnumber,
-        phone=phone,
-        email=email,
-        birthday=birthday,
-        birthday_bis=birthday_bis,
-        operation_birthday=operation_birthday,
-        gender=gender,
-        town_id=town_id,
-        is_staff=is_staff,
         created_by=created_by,
         created_at=created_at,
         created_at_bis=created_at_bis,
@@ -98,6 +111,7 @@ async def research_route(
         skip=skip,
         limit=limit,
     )
+    # print("Items retournés par research:", [item.__dict__ for item in items])
 
     # Calcul du nombre total de pages
     if limit == -1:
@@ -107,18 +121,33 @@ async def research_route(
         total_pages = (total_records // limit) + 1 if limit > 0 else 1
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
+    # Transformation des objets SQLAlchemy en instances Pydantic
     serialized = [
-        UserSchema(
-            **item.__dict__,  # Sérialise l'objet principal
-            # town=item.town if item.town else None,  # Inclure explicitement la relation town
+        SubscriptionSchema(
+            id=item.id,
+            refnumber=item.refnumber,
+            subscription_type_id=item.subscription_type_id,
+            owner_id=item.owner_id,
+            description=getattr(item, "description", ""),
+            start_date=item.start_date,
+            expiration_date=getattr(item, "expiration_date", None),
+            remaining_advertisements=getattr(item, "remaining_advertisements", 0),
+            is_read=getattr(item, "is_read", False),
+            subscription_type=SubscriptionTypeSchema.model_validate(item.subscription_type),
+            owner=UserInfo.model_validate(item.owner),
+            articles=[(ArticleSchema.model_validate(sub_item))for sub_item in item.articles] ,
+            payments=[(PaymentSchema.model_validate(sub_item))for sub_item in item.payments] ,
             creator=get_user_by_id(db, item.created_by) if item.created_by else None,
             updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
         )
         for item in items
     ]
 
-    # Construction de la réponse paginée
-    return PaginatedResponse[UserSchema](  # Utilisez PaginatedResponse[UserSchema]
+    # Pagination
+    total_pages = (total_records // limit) + 1 if limit > 0 else 1
+    current_page = (skip // limit) + 1 if limit > 0 else 1
+
+    return PaginatedResponse[SubscriptionSchema](
         records=serialized,
         metadata=PaginationMetadata(
             total_records=total_records,
@@ -127,7 +156,7 @@ async def research_route(
         ),
     )
 
-@router.get("/{id}", response_model=UserSchema)
+@router.get("/{id}", response_model=SubscriptionSchema)
 async def get_detail(id: str, db: Session = Depends(get_db)):
     item = get_by_id(db, id)
     if not item:
@@ -136,18 +165,17 @@ async def get_detail(id: str, db: Session = Depends(get_db)):
     creator = get_user_by_id(db, item.created_by) if item.created_by else None
     updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
-    # Retourne l'utilisateur avec le créateur sérialisé
-    return UserSchema.from_orm(item).copy(update={
+    # Retourne le Subscription avec le créateur sérialisé
+    return SubscriptionSchema.from_orm(item).copy(update={
         "creator": creator,
         "updator": updator}
     )
-    # return UserSchema.from_orm(item)
 
 
-@router.put("/{id}", response_model=UserSchema)
+@router.put("/{id}", response_model=SubscriptionSchema)
 async def update_route(
     id: str, 
-    n_update: UserUpdate, 
+    n_update: SubscriptionUpdate, 
     db: Session = Depends(get_db), 
     current_user: str = Depends(get_user_from_token)
 ):
@@ -157,8 +185,8 @@ async def update_route(
         creator = get_user_by_id(db, item.created_by) if item.created_by else None
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
-        # Retourne l'utilisateur avec le créateur sérialisé
-        return UserSchema.from_orm(item).copy(update={
+        # Retourne le Subscription avec le créateur sérialisé
+        return SubscriptionSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )
@@ -177,7 +205,7 @@ async def delete_route(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.patch("/restore/{id}", response_model=UserSchema)
+@router.patch("/restore/{id}", response_model=SubscriptionSchema)
 async def restore_route(
     id: str, 
     db: Session = Depends(get_db), 
@@ -189,8 +217,8 @@ async def restore_route(
         creator = get_user_by_id(db, item.created_by) if item.created_by else None
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
-        # Retourne l'utilisateur avec le créateur sérialisé
-        return UserSchema.from_orm(item).copy(update={
+        # Retourne le Subscription avec le créateur sérialisé
+        return SubscriptionSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )

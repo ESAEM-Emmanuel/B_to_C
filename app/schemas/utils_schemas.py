@@ -131,22 +131,24 @@ class FavoriteSchema(BaseModel):
 # =============================== SUBSCRIPTION SCHEMA ===============================
 class SubscriptionTypeSchema(BaseModel):
     id: str
-    name: str
+    name: Optional[str] = None
+    price: Optional[float] = None
+    price_max_article: Optional[float] = None
+    duration: Optional[int] = None
 
     class Config:
         from_attributes = True
 
 class SubscriptionSchema(BaseModel):
     id: str
-    subscription_type_id: str
-    subscription_type: SubscriptionTypeSchema
-    owner_id: str
+    subscription_type_id: Optional[str] = None
+    subscription_type: Optional[SubscriptionTypeSchema] = None
+    owner_id: Optional[str] = None
     description: Optional[str] = None
-    start_date: datetime
-    expiration_date: datetime
-    remaining_advertisements: int
-    is_read: bool
-    status: str
+    start_date: Optional[datetime] = None
+    expiration_date: Optional[datetime] = None
+    remaining_advertisements: Optional[int] = None
+    is_read: Optional[bool] = None
     owner: Optional[UserInfo] = None
 
     class Config:
@@ -198,6 +200,28 @@ class PrivilegeRoleSchema(BaseModel):
     # privilege: PrivilegeSchema
     role: Optional[RoleSchema] = None
     # role: RoleSchema
+
+    class Config:
+        from_attributes = True
+# =============================== Payment ROLE SCHEMA ===============================
+class SubscriptionSchema(BaseModel):
+    id: str
+    description: Optional[str] = None
+    start_date: Optional[date] = None
+    expiration_date: Optional[date] = None
+    remaining_advertisements: Optional[int] = None
+    is_read: Optional[bool] = None
+    article: Optional[ArticleSchema] = None
+
+    class Config:
+        from_attributes = True
+class PaymentSchema(BaseModel):
+    id: str
+    payment_number: Optional[str] = None
+    article_id: Optional[str] = None
+    subscription_id: Optional[str] = None
+    article: Optional[ArticleSchema] = None
+    subscription: Optional[SubscriptionSchema] = None
 
     class Config:
         from_attributes = True

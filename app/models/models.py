@@ -162,8 +162,10 @@ class Article(BaseMixin, Base):
     nb_visite = Column(Integer, server_default=text("0"))
     status = Column(Enum(StatusArticle), nullable=True)
     daily_rate = Column(Float, nullable=True)
-    owner_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    owner_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     owner = relationship("User", back_populates="owned_articles")
+    subscription_id = Column(String, ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=True)
+    subscription = relationship("Subscription", back_populates="articles")
     town_id = Column(String, ForeignKey("towns.id", ondelete="CASCADE"), nullable=False)
     town = relationship("Town", back_populates="articles")
     category_article_id = Column(String, ForeignKey("category_articles.id", ondelete="CASCADE"), nullable=False)
@@ -239,7 +241,10 @@ class Subscription(BaseMixin, Base):
     expiration_date = Column(DateTime(timezone=True), nullable=False)
     remaining_advertisements = Column(Integer, nullable=False)
     is_read = Column(Boolean, default=False)
-    status = Column(Enum(StatusProposition), nullable=False, default="actif")
+
+    # Relationships
+    articles = relationship("Article", back_populates="subscription")
+    payments = relationship("Payment", back_populates="subscription")
 
 # =============================== TaxInterval ===============================
 class TaxInterval(BaseMixin, Base):
@@ -260,8 +265,10 @@ class TaxInterval(BaseMixin, Base):
 class Payment(BaseMixin, Base):
     __tablename__ = "payments"
     payment_number = Column(String, unique=True, nullable=True)
-    article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=False)
+    article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=True)
     article = relationship("Article", back_populates="payments")
+    subscription_id = Column(String, ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=True)
+    subscription = relationship("Subscription", back_populates="payments")
     is_read = Column(Boolean, default=False)
 
 # =============================== SlidingScaleTariffs ===============================
@@ -270,7 +277,6 @@ class SlidingScaleTariffs(BaseMixin, Base):  # Correction du nom de la classe
     days_min = Column(Integer, nullable=False)
     max_days = Column(Integer, nullable=False)
     rate = Column(Float, nullable=False)
-    status = Column(Enum(StatusProposition), nullable=False, default="actif")
 
     @validates('days_min', 'max_days')  # Correction du nom des colonnes validées
     def validate_days_range(self, key, value):
@@ -284,7 +290,6 @@ class VolumeDiscounts(BaseMixin, Base):
     __tablename__ = "volume_discounts"  # Suppression de l'espace au début
     threshold = Column(Integer, nullable=False)
     reduction = Column(Float, nullable=False)
-    status = Column(Enum(StatusProposition), nullable=False, default="actif")
 
 class RevokedToken(Base):
     __tablename__ = "revoked_tokens"
