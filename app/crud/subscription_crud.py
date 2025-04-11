@@ -7,7 +7,7 @@ from app.utils.utils import (
     )
 from uuid import uuid4
 from typing import Optional, List
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import asc, desc
 from fastapi import HTTPException
 from pydantic import EmailStr
@@ -211,6 +211,10 @@ def update(db: Session, item_id: str, data: SubscriptionUpdate, current_user_id:
     item = db.query(Subscription).filter(Subscription.id == item_id).first()
     if not item:
         raise ValueError("L'utilisateur n'a pas été trouvé.")
+
+    # Convertir item.start_date en offset-naive si elle est offset-aware
+    if item.start_date and item.start_date.tzinfo is not None:
+        item.start_date = item.start_date.replace(tzinfo=None)
 
     # Vérification que start_date ne peut pas être modifiée après le début de l'événement
     if data.start_date is not None:
