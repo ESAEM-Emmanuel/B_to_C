@@ -87,6 +87,9 @@ from app.api.category_article_routes import router as category_article_routes
 from app.api.article_state_routes import router as article_state_routes
 from app.api.subscription_type_routes import router as subscription_type_routes
 from app.api.subscription_routes import router as subscription_routes
+from app.api.tax_interval_routes import router as tax_interval_routes
+from app.api.sliding_scale_tariffs_routes import router as sliding_scale_tariffs_routes
+from app.api.volume_discounts_routes import router as volume_discounts_routes
 
 app.include_router(auth_routes)
 app.include_router(media_routes)
@@ -102,6 +105,9 @@ app.include_router(category_article_routes)
 app.include_router(article_state_routes)
 app.include_router(subscription_type_routes)
 app.include_router(subscription_routes)
+app.include_router(tax_interval_routes)
+app.include_router(sliding_scale_tariffs_routes)
+app.include_router(volume_discounts_routes)
 
 
 

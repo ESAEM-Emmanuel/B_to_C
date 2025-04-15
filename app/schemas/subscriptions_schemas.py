@@ -60,23 +60,7 @@ class SubscriptionUpdate(BaseModel):
     
 
 
-# =============================== USER SCHEMA ===============================
-# class  SubscriptionSchema(BaseMixinSchema):
-#     subscription_type_id: str
-#     owner_id: str
-#     description: str
-#     start_date: date
-#     expiration_date: date
-#     remaining_advertisements: int
-#     is_read: bool
-
-#     subscription_type: SubscriptionTypeSchema
-#     owner: UserInfo
-#     articles: List[ArticleSchema] = []  # Liste vide par défaut
-#     payments: List[PaymentSchema] = [] 
-
-#     class Config:
-#         from_attributes = True
+# =============================== SUBSCRITION SCHEMA ===============================
 
 class SubscriptionSchema(BaseMixinSchema):
     subscription_type_id: str
@@ -94,5 +78,3 @@ class SubscriptionSchema(BaseMixinSchema):
 
     class Config:
         from_attributes = True
-
-

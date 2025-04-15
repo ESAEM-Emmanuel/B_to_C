@@ -249,10 +249,9 @@ class Subscription(BaseMixin, Base):
 # =============================== TaxInterval ===============================
 class TaxInterval(BaseMixin, Base):
     __tablename__ = "tax_intervals"
-    min_price = Column(Float, nullable=True)
-    max_price = Column(Float, nullable=True)
-    daily_rate = Column(Float, nullable=True)
-    is_read = Column(Boolean, default=False)
+    min_price = Column(Float, nullable=False)
+    max_price = Column(Float, nullable=False)
+    daily_rate = Column(Float, nullable=False)
 
     @validates('min_price', 'max_price')
     def validate_price_range(self, key, value):
@@ -264,7 +263,7 @@ class TaxInterval(BaseMixin, Base):
 # =============================== Payment ===============================
 class Payment(BaseMixin, Base):
     __tablename__ = "payments"
-    payment_number = Column(String, unique=True, nullable=True)
+    payment_number = Column(String, unique=True, nullable=False)
     article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=True)
     article = relationship("Article", back_populates="payments")
     subscription_id = Column(String, ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=True)

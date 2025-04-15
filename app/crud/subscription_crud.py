@@ -231,34 +231,28 @@ def update(db: Session, item_id: str, data: SubscriptionUpdate, current_user_id:
 
     # Mise à jour des champs
     if data.start_date is not None and data.subscription_type_id is None:
-        print("Ici1")
         item.start_date = data.start_date
         subscription_type = db.query(SubscriptionType).filter(SubscriptionType.id == item.subscription_type_id).first()
         if not subscription_type:
             raise HTTPException(status_code=404, detail="Le type d'abonnement spécifié n'existe pas.")
         expiration_date = data.start_date + timedelta(days=subscription_type.duration)
         item.expiration_date = expiration_date  # Assignation manquante ajoutée ici
-        print("expiration_date :", item.expiration_date, " = ", expiration_date)
 
     elif data.subscription_type_id is not None and data.start_date is None:
-        print("Ici2")
         item.subscription_type_id = data.subscription_type_id
         subscription_type = db.query(SubscriptionType).filter(SubscriptionType.id == data.subscription_type_id).first()
         if not subscription_type:
             raise HTTPException(status_code=404, detail="Le type d'abonnement spécifié n'existe pas.")
         item.expiration_date = item.start_date + timedelta(days=subscription_type.duration)
         item.remaining_advertisements = subscription_type.advertisements
-        print("expiration_date :", item.expiration_date, " = ", item.expiration_date)
 
     elif data.subscription_type_id is not None and data.start_date is not None:
-        print("Ici3")
         item.subscription_type_id = data.subscription_type_id
         subscription_type = db.query(SubscriptionType).filter(SubscriptionType.id == data.subscription_type_id).first()
         if not subscription_type:
             raise HTTPException(status_code=404, detail="Le type d'abonnement spécifié n'existe pas.")
         item.expiration_date = data.start_date + timedelta(days=subscription_type.duration)
         item.remaining_advertisements = subscription_type.advertisements
-        print("expiration_date :", item.expiration_date, " = ", item.expiration_date)
 
     # Mise à jour des autres champs
     if data.owner_id is not None:
@@ -275,59 +269,6 @@ def update(db: Session, item_id: str, data: SubscriptionUpdate, current_user_id:
     db.refresh(item)
     return item
 
-# def update(db: Session, item_id: str, data: SubscriptionUpdate, current_user_id: str):
-#     item = db.query(Subscription).filter(Subscription.id == item_id).first()
-#     if not item:
-#         raise ValueError("L'utilisateur n'a pas été trouvé.")
-
-#     # Mise à jour des champs
-#     if data.start_date is not None and data.subscription_type_id is None:
-#         print("Ici1")
-#         if data.start_date > date.now(tz=None):
-#             raise HTTPException(status_code=404, detail="La date de début ne peux être remplacer après le début.")
-#         item.start_date = data.start_date
-#         subscription_type = db.query(SubscriptionType).filter(SubscriptionType.id == item.subscription_type_id).first()
-#         if not subscription_type:
-#             raise HTTPException(status_code=404, detail="Le type d'abonnement spécifié n'existe pas.")
-#         expiration_date = data.start_date + timedelta(days=subscription_type.duration)
-#         item.expiration_date = expiration_date  # Assignation manquante ajoutée ici
-#         print("expiration_date :", item.expiration_date, " = ", expiration_date)
-#     elif data.subscription_type_id is not None and data.start_date is None:
-#         print("Ici2")
-#         item.subscription_type_id = data.subscription_type_id
-#         subscription_type = db.query(SubscriptionType).filter(SubscriptionType.id == data.subscription_type_id).first()
-#         if not subscription_type:
-#             raise HTTPException(status_code=404, detail="Le type d'abonnement spécifié n'existe pas.")
-#         item.expiration_date = item.start_date + timedelta(days=subscription_type.duration)
-#         item.remaining_advertisements = subscription_type.advertisements
-#         print("expiration_date :", item.expiration_date, " = ", item.expiration_date)
-#     elif data.subscription_type_id is not None and data.start_date is not None:
-#         print("Ici3")
-#         if data.start_date > date.now(tz=None):
-#             raise HTTPException(status_code=404, detail="La date de début ne peux être remplacer après le début.")
-#         item.subscription_type_id = data.subscription_type_id
-#         subscription_type = db.query(SubscriptionType).filter(SubscriptionType.id == data.subscription_type_id).first()
-#         if not subscription_type:
-#             raise HTTPException(status_code=404, detail="Le type d'abonnement spécifié n'existe pas.")
-#         item.expiration_date = data.start_date + timedelta(days=subscription_type.duration)
-#         item.remaining_advertisements = subscription_type.advertisements
-#         print("expiration_date :", item.expiration_date, " = ", item.expiration_date)
-
-#     if data.owner_id is not None:
-#         item.owner_id = data.owner_id
-
-#     if data.description is not None:
-#         item.description = data.description
-
-#     if data.is_read is not None:
-#         item.is_read = data.is_read
-
-#     item.updated_by = current_user_id
-#     db.commit()
-#     db.refresh(item)
-#     return item
-
-    
 
 def delete(db: Session, item_id: str, current_user_id: str):
     item = db.query(Subscription).filter(Subscription.id == item_id, Subscription.active == True).first()
