@@ -14,10 +14,10 @@ class StatusProposition(enum.Enum):
     INACTIF = "inactif"
 
 class StatusArticle(enum.Enum):
-    EN_ATTENTE = "en attente"
-    PUBLIEE = "publié"
-    EXPIRE = "expiré"
-    ABANDONNE = "abandonné"
+    PENDING = "pending"
+    PUBLISHED = "published"
+    EXPIRED = "expired"
+    ABANDONED = "abandoned"
 
 # =============================== BASE MIXIN ===============================
 class BaseMixin:
@@ -158,10 +158,11 @@ class Article(BaseMixin, Base):
     price = Column(Float, nullable=True)
     main_image = Column(String(255), nullable=False)
     other_images = Column(ARRAY(String), nullable=True)
+    start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     nb_visite = Column(Integer, server_default=text("0"))
-    status = Column(Enum(StatusArticle), nullable=True)
-    daily_rate = Column(Float, nullable=True)
+    status = Column(Enum(StatusArticle), default=StatusArticle.PENDING)
+    amount_to_pay = Column(Float, nullable=True)
     owner_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     owner = relationship("User", back_populates="owned_articles")
     subscription_id = Column(String, ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=True)

@@ -56,6 +56,20 @@ class CountrySchema(BaseModel):
     class Config:
         from_attributes = True
 
+class CategoryArticleSchema(BaseModel):
+    id: str
+    name: str
+
+    class Config:
+        from_attributes = True
+
+class ArticleStateSchema(BaseModel):
+    id: str
+    name: str
+
+    class Config:
+        from_attributes = True
+
 class TownSchema(BaseModel):
     id: str
     name: str
@@ -177,6 +191,25 @@ class PrivilegeUserSchema(BaseModel):
 class RoleSchema(BaseModel):
     id: str
     name: str
+
+    class Config:
+        from_attributes = True
+# =============================== USER ROLE SCHEMA ===============================
+class RoleSchema(BaseModel):
+    id: str
+    name: str
+
+    class Config:
+        from_attributes = True
+# =============================== USER ROLE SCHEMA ===============================
+class PaymentSchema(BaseModel):
+    id: str
+    payment_number: str
+    article_id: Optional[str] =None
+    subscription_id: Optional[str] =None
+    is_read: bool
+    
+
 
     class Config:
         from_attributes = True

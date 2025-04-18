@@ -134,9 +134,6 @@ def research(
     return items, total_records
 
 
-
-from sqlalchemy import and_
-
 def create(
     db: Session,
     data: TaxIntervalCreate,

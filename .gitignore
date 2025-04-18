@@ -3,7 +3,7 @@ venv/
 alemvic/
 .env
 vercel.json
-medias/
+# medias/
 # Ignorer tous les fichiers .versel
 .versel
 # Ignorer tous les fichiers .log
