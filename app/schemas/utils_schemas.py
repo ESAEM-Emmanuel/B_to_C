@@ -120,13 +120,13 @@ class ArticleSchema(BaseModel):
 # =============================== SIGNAL SCHEMA ===============================
 class SignalSchema(BaseModel):
     id: str
-    description: str
     owner_id: str
-    offender_id: str
-    article_id: str
+    description: Optional[str] =None
+    offender_id: Optional[str] =None
+    article_id: Optional[str] =None
     owner: Optional[UserInfo] = None
     offender: Optional[UserInfo] = None
-    article: ArticleSchema
+    article: Optional[ArticleSchema] = None
 
     class Config:
         from_attributes = True

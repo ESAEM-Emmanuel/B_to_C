@@ -230,7 +230,7 @@ def upgrade() -> None:
     sa.Column('other_images', sa.ARRAY(sa.String()), nullable=True),
     sa.Column('end_date', sa.Date(), nullable=True),
     sa.Column('nb_visite', sa.Integer(), server_default=sa.text('0'), nullable=True),
-    sa.Column('status', sa.Enum('pending', 'published', 'expired', 'abandoned', name='statusarticle'), nullable=True, server_default='pending' ),
+    sa.Column('status', sa.Enum('PENDING', 'PUBLISHED', 'EXPIRED', 'ABANDONED', name='statusarticle'), nullable=True, server_default='pending' ),
     sa.Column('daily_rate', sa.Float(), nullable=True),
     sa.Column('owner_id', sa.String(), nullable=False),
     sa.Column('town_id', sa.String(), nullable=False),

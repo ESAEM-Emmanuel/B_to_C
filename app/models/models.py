@@ -189,17 +189,17 @@ class Signal(BaseMixin, Base):
         back_populates="reported_signals"
     )
     
-    offender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    offender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     offender = relationship(
         "User",
         foreign_keys=[offender_id],  # Clé étrangère explicite
         back_populates="offender_signals"
     )
     
-    article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=False)
+    article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=True)
     article = relationship("Article", back_populates="signals")
     
-    description = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
 
 # =============================== Favorite ===============================
 class Favorite(BaseMixin, Base):
