@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from app.schemas.signals_schemas import (
-    SignalCreate,
-    SignalUpdate,
-    SignalSchema,)
+from app.schemas.favorites_schemas import (
+    FavoriteCreate,
+    FavoriteUpdate,
+    FavoriteSchema,)
 from app.schemas.utils_schemas import (PaginatedResponse,
 PaginationMetadata,
 ArticleSchema,
@@ -12,7 +12,7 @@ UserInfo,
 from app.database import get_db
 from typing import Optional, List
 from datetime import date, datetime, time
-from app.crud.signal_crud import (
+from app.crud.favorite_crud import (
     research,
     create,
     get_by_id,
@@ -21,11 +21,11 @@ from app.utils.utils import verify,get_user_by_id
 from app.crud.auth_crud import (get_user_from_token_optional,
 get_user_from_token)
 
-router = APIRouter(prefix="/signals", tags=["Signals Requests"])
+router = APIRouter(prefix="/favorites", tags=["Favorites Requests"])
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=SignalSchema)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=FavoriteSchema)
 async def create_route(
-    item: SignalCreate, 
+    item: FavoriteCreate, 
     db: Session = Depends(get_db), 
     current_user: Optional[str] = Depends(get_user_from_token)
 ):
@@ -36,7 +36,7 @@ async def create_route(
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
         # Retourne le PrivilegeUser avec le créateur sérialisé
-        return SignalSchema.from_orm(item).copy(update={
+        return FavoriteSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )
@@ -44,12 +44,11 @@ async def create_route(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=PaginatedResponse[SignalSchema])
-async def get_signals(
+
+@router.get("/", response_model=PaginatedResponse[FavoriteSchema])
+async def get_favorites(
     owner_id: Optional[str] = Query(None, description="Filtrer par ID du propriétaire"),
     article_id: Optional[str] = Query(None, description="Filtrer par ID de l'article"),
-    offender_id: Optional[str] = Query(None, description="Filtrer par ID de l'offenseur"),
-    description: Optional[str] = Query(None, description="Filtrer par description (recherche partielle)"),
     refnumber: Optional[str] = Query(None, description="Filtrer par numéro de référence (recherche partielle)"),
     created_by: Optional[str] = Query(None, description="Filtrer par utilisateur ayant créé le signalement"),
     created_at: Optional[date] = Query(None, description="Filtrer par date de création (exacte ou plage)"),
@@ -74,8 +73,6 @@ async def get_signals(
         db=db,
         owner_id=owner_id,
         article_id=article_id,
-        offender_id=offender_id,
-        description=description,
         refnumber=refnumber,
         created_by=created_by,
         created_at=created_at,
@@ -102,19 +99,16 @@ async def get_signals(
 
     # Transformation des objets SQLAlchemy en instances Pydantic
     serialized = [
-        SignalSchema(
+        FavoriteSchema(
             id=item.id,
             owner_id=item.owner_id,
             article_id=item.article_id,
-            offender_id=item.offender_id,
-            description=item.description,
             refnumber=item.refnumber,
             created_at=item.created_at,
             updated_at=item.updated_at,
             active=item.active,
             owner=UserInfo.model_validate(item.owner),  # Transforme la relation role en UserInfo
             article=ArticleSchema.model_validate(item.article) if item.article else None,  # Transforme la relation article en ArticleSchema
-            offender=UserInfo.model_validate(item.offender)if item.offender else None,  # Transforme la relation role en Ownerschema
             creator=get_user_by_id(db, item.created_by) if item.created_by else None,
             updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
         )
@@ -122,7 +116,7 @@ async def get_signals(
     ]
 
     # Construction de la réponse paginée
-    return PaginatedResponse[SignalSchema](
+    return PaginatedResponse[FavoriteSchema](
         records=serialized,
         metadata=PaginationMetadata(
             total_records=total_records,
@@ -131,7 +125,7 @@ async def get_signals(
         ),
     )
 
-@router.get("/{id}", response_model=SignalSchema)
+@router.get("/{id}", response_model=FavoriteSchema)
 async def get_detail(id: str, db: Session = Depends(get_db)):
     item = get_by_id(db, id)
     print("item : ", item)
@@ -142,7 +136,7 @@ async def get_detail(id: str, db: Session = Depends(get_db)):
     updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
     # Retourne le PrivilegeUser avec le créateur sérialisé
-    return SignalSchema.from_orm(item).copy(update={
+    return FavoriteSchema.from_orm(item).copy(update={
         "creator": creator,
         "updator": updator}
     )

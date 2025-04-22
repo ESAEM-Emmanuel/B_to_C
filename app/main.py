@@ -92,6 +92,7 @@ from app.api.sliding_scale_tariffs_routes import router as sliding_scale_tariffs
 from app.api.volume_discounts_routes import router as volume_discounts_routes
 from app.api.article_routes import router as article_routes
 from app.api.signal_routes import router as signal_routes
+from app.api.favorite_routes import router as favorite_routes
 
 app.include_router(auth_routes)
 app.include_router(media_routes)
@@ -112,6 +113,7 @@ app.include_router(sliding_scale_tariffs_routes)
 app.include_router(volume_discounts_routes)
 app.include_router(article_routes)
 app.include_router(signal_routes)
+app.include_router(favorite_routes)
 
 
 

@@ -60,7 +60,6 @@ def research(
     valid_sort_columns = [column.key for column in Signal.__table__.columns]
     if sort_by not in valid_sort_columns:
         raise ValueError(f"Invalid sort_by value: {sort_by}. Valid options are: {valid_sort_columns}")
-    print("ok ici")
 
     # Construction de la requête
     query = db.query(Signal)
@@ -69,7 +68,6 @@ def research(
     # joinedload(Signal.offender,
     # joinedload(Signal.article))
     # )
-    print("query :", query)
 
     # Filtres génériques
     if owner_id:
