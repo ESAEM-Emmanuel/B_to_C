@@ -258,3 +258,13 @@ class PaymentSchema(BaseModel):
 
     class Config:
         from_attributes = True
+class PaymentSchema(BaseModel):
+    id: str
+    payment_number: Optional[str] = None
+    article_id: Optional[str] = None
+    subscription_id: Optional[str] = None
+    article: Optional[ArticleSchema] = None
+    subscription: Optional[SubscriptionSchema] = None
+
+    class Config:
+        from_attributes = True

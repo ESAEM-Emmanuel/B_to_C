@@ -25,19 +25,12 @@ import re
 
 
 
-class Signal(BaseModel):
-    # owner_id: str = Field(
-    #     ...,
-    #     description="Séléctionnez un rôle existant.",
-    # )
+class Notification(BaseModel):
     article_id: str = Field(
         None,
         description="Séléctionnez un privilege existant.",
     )
-    offender_id: str = Field(
-        None,
-        description="Séléctionnez un privilege existant.",
-    )
+
     description: Optional[str] = Field(
         None,
         description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
@@ -45,31 +38,27 @@ class Signal(BaseModel):
     
 
 
-class SignalCreate(Signal):
+class NotificationCreate(Notification):
    pass
 
 
-class SignalUpdate(BaseModel):
-    owner_id: Optional[constr(max_length=256)] = None
+class NotificationUpdate(BaseModel):
     article_id: Optional[constr(max_length=256)] = None
-    offender_id: Optional[constr(max_length=256)] = None
     description: Optional[str] = Field(
         None,
         description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
     )
+    is_read: Optional[bool] = False
     
 
 
 # =============================== USER SCHEMA ===============================
-class SignalSchema(BaseMixinSchema):
-    owner_id: str
+class NotificationSchema(BaseMixinSchema):
     article_id: Optional[str] = None
-    offender_id: Optional[str] = None
     description: Optional[str] = None
+    is_read: Optional[bool] = False
 
-    owner: UserInfo
     article: Optional[ArticleSchema] = None
-    offender: Optional[UserInfo] = None
 
     class Config:
         from_attributes = True
