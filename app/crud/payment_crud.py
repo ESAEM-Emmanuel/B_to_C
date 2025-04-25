@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_
-from app.models.models import Notification
-from app.schemas.notifications_schemas import NotificationCreate, NotificationUpdate
+from app.models.models import Payment
+from app.schemas.payments_schemas import PaymentCreate, PaymentUpdate
 from app.utils.utils import (
     generate_unique_num_ref,
     )
@@ -15,21 +15,20 @@ import bcrypt
 
 
 def get_by_id(db: Session, item_id: str):
-    item = db.query(Notification).filter(Notification.id == item_id).first()
+    item = db.query(Payment).filter(Payment.id == item_id).first()
     if not item:
-        raise ValueError("Notification not found or already deleted.")
+        raise ValueError("Payment not found or already deleted.")
     item.is_read = True
     db.commit()
     db.refresh(item)
     return item
-    # return db.query(Notification).filter(Notification.id == item_id).first()
 
 
 def research(
     db: Session,
+    payment_number: Optional[str] = None,
     article_id: Optional[str] = None,
     subscription_id: Optional[str] = None,
-    description: Optional[str] = None,
     is_read: Optional[bool] = None,
     refnumber: Optional[str] = None,
     created_by: Optional[str] = None,
@@ -55,32 +54,32 @@ def research(
         raise ValueError("Le paramètre 'updated_at_operation' doit être 'inf' ou 'sup'.")
 
     # Liste des colonnes valides pour le tri
-    valid_sort_columns = [column.key for column in Notification.__table__.columns]
+    valid_sort_columns = [column.key for column in Payment.__table__.columns]
     if sort_by not in valid_sort_columns:
         raise ValueError(f"Invalid sort_by value: {sort_by}. Valid options are: {valid_sort_columns}")
 
     # Construction de la requête
-    query = db.query(Notification)
+    query = db.query(Payment)
 
     # Filtres génériques
     if article_id:
-        query = query.filter(Notification.article_id == article_id)
+        query = query.filter(Payment.article_id == article_id)
+    if payment_number:
+        query = query.filter(Payment.payment_number == payment_number)
     if subscription_id:
-        query = query.filter(Notification.subscription_id == subscription_id)
-    if description:
-        query = query.filter(Notification.description == description.lower())
+        query = query.filter(Payment.subscription_id == subscription_id)
     if refnumber:
-        query = query.filter(Notification.refnumber.ilike(f"%{refnumber}%"))
+        query = query.filter(Payment.refnumber.ilike(f"%{refnumber}%"))
     if created_by is not None:
-        query = query.filter(Notification.created_by == created_by)
+        query = query.filter(Payment.created_by == created_by)
     if updated_by is not None:
-        query = query.filter(Notification.updated_by == updated_by)
+        query = query.filter(Payment.updated_by == updated_by)
     if active is not None:
-        query = query.filter(Notification.active == active)
+        query = query.filter(Payment.active == active)
     if active is not None:
-        query = query.filter(Notification.active == active)
+        query = query.filter(Payment.active == active)
     if is_read is not None:
-        query = query.filter(Notification.is_read == is_read)
+        query = query.filter(Payment.is_read == is_read)
 
     # Filtres sur les dates
     def apply_date_filter(field, value, bis_value, operation):
@@ -98,8 +97,8 @@ def research(
 
     filters = []
     for field, value, bis_value, operation in [
-        (Notification.created_at, created_at, created_at_bis, created_at_operation),
-        (Notification.updated_at, updated_at, updated_at_bis, updated_at_operation),
+        (Payment.created_at, created_at, created_at_bis, created_at_operation),
+        (Payment.updated_at, updated_at, updated_at_bis, updated_at_operation),
     ]:
         filter_condition = apply_date_filter(field, value, bis_value, operation)
         if filter_condition is not None:
@@ -110,14 +109,14 @@ def research(
 
     # Tri
     order_func = asc if order == "asc" else desc
-    query = query.order_by(order_func(getattr(Notification, sort_by)))
+    query = query.order_by(order_func(getattr(Payment, sort_by)))
 
     # Pagination
     total_records = query.count()
 
     if limit == -1:
         # Si limit = -1, on filtre uniquement les utilisateurs actifs
-        items = query.filter(Notification.active == True).all()
+        items = query.filter(Payment.active == True).all()
         total_records = len(items)  # Recalcul du nombre total d'enregistrements
     else:
         items = query.offset(skip).limit(limit).all() if limit > 0 else query.all() 
@@ -127,32 +126,32 @@ def research(
 
 def create(
     db: Session, 
-    data: NotificationCreate, 
+    data: PaymentCreate, 
     current_user_id: Optional[str] = None
-) -> Notification:
+) -> Payment:
     """
-    Crée une nouvelle association Notification après vérification des doublons.
+    Crée une nouvelle association Payment après vérification des doublons.
     
     Args:
         db (Session): La session de base de données.
-        data (NotificationCreate): Les données à insérer.
-        current_user_id (Optional[str]): L'ID de La notification actuel (facultatif).
+        data (PaymentCreate): Les données à insérer.
+        current_user_id (Optional[str]): L'ID de La Payment actuel (facultatif).
     
     Returns:
-        Notification: L'objet Notification créé.
+        Payment: L'objet Payment créé.
     
     Raises:
         ValueError: Si une association identique existe déjà.
         HTTPException: En cas d'erreur lors de la création ou mise à jour.
     """
-        # Si aucun doublon n'existe, on crée un nouveau Notification
+        # Si aucun doublon n'existe, on crée un nouveau Payment
     try:
         # Génération de l'UUID et du numéro de référence unique
         concatenated_uuid = str(uuid4())
-        unique_ref = generate_unique_num_ref(Notification, db)
+        unique_ref = generate_unique_num_ref(Payment, db)
 
-        # Création de l'objet Notification
-        item = Notification(
+        # Création de l'objet Payment
+        item = Payment(
             id=concatenated_uuid,
             refnumber=unique_ref,
             created_by=current_user_id,
@@ -167,20 +166,20 @@ def create(
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erreur lors de la création du Notification : {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la création du Payment : {str(e)}")
 
-def update(db: Session, item_id: str, data: NotificationUpdate, current_user_id: str):
-    item = db.query(Notification).filter(Notification.id == item_id).first()
+def update(db: Session, item_id: str, data: PaymentUpdate, current_user_id: str):
+    item = db.query(Payment).filter(Payment.id == item_id).first()
     if not item:
-        raise ValueError("La notification n'a pas été trouvé.")
+        raise ValueError("La Payment n'a pas été trouvé.")
 
     # Mise à jour des champs
     if data.article_id is not None:
         item.article_id = data.article_id
+    if data.payment_number is not None:
+        item.payment_number = data.payment_number
     if data.subscription_id is not None:
         item.subscription_id = data.subscription_id
-    if data.description is not None:
-        item.description = data.description.lower()
     if data.is_read is not None:
         item.is_read = data.is_read
 
@@ -191,9 +190,9 @@ def update(db: Session, item_id: str, data: NotificationUpdate, current_user_id:
     
 
 def delete(db: Session, item_id: str, current_user_id: str):
-    item = db.query(Notification).filter(Notification.id == item_id, Notification.active == True).first()
+    item = db.query(Payment).filter(Payment.id == item_id, Payment.active == True).first()
     if not item:
-        raise ValueError("Notification not found or already deleted.")
+        raise ValueError("Payment not found or already deleted.")
     item.active = False
     item.updated_by = current_user_id
     db.commit()
@@ -201,9 +200,9 @@ def delete(db: Session, item_id: str, current_user_id: str):
     return item
 
 def restore(db: Session, item_id: str, current_user_id: str):
-    item = db.query(Notification).filter(Notification.id == item_id, Notification.active == False).first()
+    item = db.query(Payment).filter(Payment.id == item_id, Payment.active == False).first()
     if not item:
-        raise ValueError("Notification not found or already active.")
+        raise ValueError("Payment not found or already active.")
     item.active = True
     item.updated_by = current_user_id
     db.commit()

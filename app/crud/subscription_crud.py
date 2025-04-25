@@ -12,6 +12,10 @@ from sqlalchemy import asc, desc
 from fastapi import HTTPException
 from pydantic import EmailStr
 import bcrypt
+from app.crud.notification_crud import create as create_notification
+from app.schemas.notifications_schemas import NotificationCreate
+from app.crud.payment_crud import create as create_payment
+from app.schemas.payments_schemas import PaymentCreate
 
 
 def get_by_id(db: Session, item_id: str):
@@ -195,9 +199,23 @@ def create(
             created_by=current_user_id,
         )
 
-        # Ajout à la base de données
+        # Ajout de l'article à la session
         db.add(item)
+
+        # Préparation des données pour la notification
+        
+        data_notification = NotificationCreate(
+            subscription_id=item.id,
+            description="création"
+        )
+
+        # Création de la notification
+        notification = create_notification(db, data_notification, current_user_id)
+
+        # Validation de la transaction
         db.commit()
+
+        # Rafraîchissement des objets pour récupérer les données finales
         db.refresh(item)
         return item
 

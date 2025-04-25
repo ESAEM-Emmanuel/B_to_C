@@ -30,6 +30,10 @@ class Notification(BaseModel):
         None,
         description="Séléctionnez un privilege existant.",
     )
+    subscription_id: str = Field(
+        None,
+        description="Séléctionnez un privilege existant.",
+    )
 
     description: Optional[str] = Field(
         None,
@@ -44,6 +48,7 @@ class NotificationCreate(Notification):
 
 class NotificationUpdate(BaseModel):
     article_id: Optional[constr(max_length=256)] = None
+    subscription_id: Optional[constr(max_length=256)] = None
     description: Optional[str] = Field(
         None,
         description="Le numéro de téléphone doit contenir entre 9 et 15 chiffres, avec un format valide (+, - autorisés).",
@@ -55,9 +60,11 @@ class NotificationUpdate(BaseModel):
 # =============================== USER SCHEMA ===============================
 class NotificationSchema(BaseMixinSchema):
     article_id: Optional[str] = None
+    subscription_id: Optional[str] = None
     description: Optional[str] = None
     is_read: Optional[bool] = False
 
+    article: Optional[ArticleSchema] = None
     article: Optional[ArticleSchema] = None
 
     class Config:

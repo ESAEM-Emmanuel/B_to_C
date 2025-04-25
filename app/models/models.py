@@ -212,8 +212,10 @@ class Favorite(BaseMixin, Base):
 # =============================== Notification ===============================
 class Notification(BaseMixin, Base):
     __tablename__ = "notifications"
-    article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=False)
+    article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=True)
+    subscription_id = Column(String, ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=True)
     article = relationship("Article", back_populates="notifications")
+    subscription = relationship("Subscription", back_populates="notifications")
     description = Column(Text, nullable=True)
     is_read = Column(Boolean, default=False)
 
@@ -245,6 +247,7 @@ class Subscription(BaseMixin, Base):
 
     # Relationships
     articles = relationship("Article", back_populates="subscription")
+    notifications = relationship("Notification", back_populates="subscription")
     payments = relationship("Payment", back_populates="subscription")
 
 # =============================== TaxInterval ===============================
@@ -264,7 +267,7 @@ class TaxInterval(BaseMixin, Base):
 # =============================== Payment ===============================
 class Payment(BaseMixin, Base):
     __tablename__ = "payments"
-    payment_number = Column(String, unique=True, nullable=False)
+    payment_number = Column(String, unique=False, nullable=False)
     article_id = Column(String, ForeignKey("articles.id", ondelete="CASCADE"), nullable=True)
     article = relationship("Article", back_populates="payments")
     subscription_id = Column(String, ForeignKey("subscriptions.id", ondelete="CASCADE"), nullable=True)

@@ -167,6 +167,20 @@ class SubscriptionSchema(BaseModel):
 
     class Config:
         from_attributes = True
+# =============================== NOTIFICQTION SCHEMA ===============================
+class NotificationSchema(BaseModel):
+    id: str
+    article_id: Optional[str] = None
+    subscription_id: Optional[str] = None
+    description: Optional[str] = None
+    is_read: bool
+    article: Optional[ArticleSchema] = None
+    subscription: Optional[SubscriptionSchema] = None
+
+    class Config:
+        from_attributes = True
+
+
 
 # =============================== PRIVILEGE USER SCHEMA ===============================
 class PrivilegeSchema(BaseModel):

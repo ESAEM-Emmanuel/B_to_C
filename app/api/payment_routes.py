@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from app.schemas.notifications_schemas import (
-    NotificationCreate,
-    NotificationUpdate,
-    NotificationSchema,)
+from app.schemas.payments_schemas import (
+    PaymentCreate,
+    PaymentUpdate,
+    PaymentSchema,)
 from app.schemas.utils_schemas import (PaginatedResponse,
 PaginationMetadata,
 ArticleSchema,
@@ -12,7 +12,7 @@ UserInfo,
 from app.database import get_db
 from typing import Optional, List
 from datetime import date, datetime, time
-from app.crud.notification_crud import (
+from app.crud.payment_crud import (
     research,
     create,
     get_by_id,
@@ -24,11 +24,11 @@ from app.utils.utils import verify,get_user_by_id
 from app.crud.auth_crud import (get_user_from_token_optional,
 get_user_from_token)
 
-router = APIRouter(prefix="/notifications", tags=["Notifications Requests"])
+router = APIRouter(prefix="/payments", tags=["Payments Requests"])
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=NotificationSchema)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=PaymentSchema)
 async def create_route(
-    item: NotificationCreate, 
+    item: PaymentCreate, 
     db: Session = Depends(get_db), 
     current_user: Optional[str] = Depends(get_user_from_token)
 ):
@@ -39,7 +39,7 @@ async def create_route(
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
         # Retourne le PrivilegeUser avec le créateur sérialisé
-        return NotificationSchema.from_orm(item).copy(update={
+        return PaymentSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )
@@ -47,11 +47,11 @@ async def create_route(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=PaginatedResponse[NotificationSchema])
+@router.get("/", response_model=PaginatedResponse[PaymentSchema])
 async def get_signals(
     article_id: Optional[str] = Query(None, description="Filtrer par ID de l'article"),
-    subscription_id: Optional[str] = Query(None, description="Filtrer par ID de d'abonement"),
-    description: Optional[str] = Query(None, description="Filtrer par description (recherche partielle)"),
+    payment_number: Optional[str] = Query(None, description="Filtrer par payment_number (recherche partielle)"),
+    subscription_id: Optional[str] = Query(None, description="Filtrer par subscription (recherche partielle)"),
     refnumber: Optional[str] = Query(None, description="Filtrer par numéro de référence (recherche partielle)"),
     created_by: Optional[str] = Query(None, description="Filtrer par utilisateur ayant créé le signalement"),
     created_at: Optional[date] = Query(None, description="Filtrer par date de création (exacte ou plage)"),
@@ -76,8 +76,8 @@ async def get_signals(
     items, total_records = research(
         db=db,
         article_id=article_id,
+        payment_number=payment_number,
         subscription_id=subscription_id,
-        description=description,
         is_read=is_read,
         refnumber=refnumber,
         created_by=created_by,
@@ -105,11 +105,11 @@ async def get_signals(
 
     # Transformation des objets SQLAlchemy en instances Pydantic
     serialized = [
-        NotificationSchema(
+        PaymentSchema(
             id=item.id,
             article_id=item.article_id,
+            payment_number=item.payment_number,
             subscription_id=item.subscription_id,
-            description=item.description,
             is_read=item.is_read,
             refnumber=item.refnumber,
             created_at=item.created_at,
@@ -123,7 +123,7 @@ async def get_signals(
     ]
 
     # Construction de la réponse paginée
-    return PaginatedResponse[NotificationSchema](
+    return PaginatedResponse[PaymentSchema](
         records=serialized,
         metadata=PaginationMetadata(
             total_records=total_records,
@@ -132,7 +132,7 @@ async def get_signals(
         ),
     )
 
-@router.get("/{id}", response_model=NotificationSchema)
+@router.get("/{id}", response_model=PaymentSchema)
 async def get_detail(id: str, db: Session = Depends(get_db)):
     item = get_by_id(db, id)
     if not item:
@@ -142,15 +142,15 @@ async def get_detail(id: str, db: Session = Depends(get_db)):
     updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
     # Retourne le PrivilegeUser avec le créateur sérialisé
-    return NotificationSchema.from_orm(item).copy(update={
+    return PaymentSchema.from_orm(item).copy(update={
         "creator": creator,
         "updator": updator}
     )
 
-@router.put("/{id}", response_model=NotificationSchema)
+@router.put("/{id}", response_model=PaymentSchema)
 async def update_route(
     id: str, 
-    n_update: NotificationUpdate, 
+    n_update: PaymentUpdate, 
     db: Session = Depends(get_db), 
     current_user: str = Depends(get_user_from_token)
 ):
@@ -161,7 +161,7 @@ async def update_route(
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
         # Retourne le roleavec le créateur sérialisé
-        return NotificationSchema.from_orm(item).copy(update={
+        return PaymentSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )
@@ -180,7 +180,7 @@ async def delete_route(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.patch("/restore/{id}", response_model=NotificationSchema)
+@router.patch("/restore/{id}", response_model=PaymentSchema)
 async def restore_route(
     id: str, 
     db: Session = Depends(get_db), 
@@ -193,7 +193,7 @@ async def restore_route(
         updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
 
         # Retourne le roleavec le créateur sérialisé
-        return NotificationSchema.from_orm(item).copy(update={
+        return PaymentSchema.from_orm(item).copy(update={
             "creator": creator,
             "updator": updator}
         )

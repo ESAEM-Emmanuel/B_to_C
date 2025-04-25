@@ -14,6 +14,10 @@ from sqlalchemy import asc, desc
 from fastapi import HTTPException
 from pydantic import EmailStr
 import bcrypt
+from app.crud.notification_crud import create as create_notification
+from app.schemas.notifications_schemas import NotificationCreate
+from app.crud.payment_crud import create as create_payment
+from app.schemas.payments_schemas import PaymentCreate
 
 def count_articles_published_by_owner(db, owner_id):
     # Étape 1 : Récupérer les IDs des souscriptions de l'article
@@ -338,9 +342,23 @@ def create(db: Session, data: ArticleCreate, current_user_id: str = None):
             amount_to_pay=amount_to_pay,
             created_by=current_user_id
         )
-
+        # Ajout de l'article à la session
         db.add(item)
+
+        # Préparation des données pour la notification
+        
+        data_notification = NotificationCreate(
+            article_id=item.id,
+            description="création"
+        )
+
+        # Création de la notification
+        notification = create_notification(db, data_notification, current_user_id)
+
+        # Validation de la transaction
         db.commit()
+
+        # Rafraîchissement des objets pour récupérer les données finales
         db.refresh(item)
         return item
     except Exception as e:
@@ -373,6 +391,18 @@ def update(db: Session, item_id: str, data: ArticleUpdate, current_user_id: str)
         item.nb_visite = data.nb_visite
     if data.status is not None:
         item.status = data.status
+        # if item.status == StatusArticle.PENDING.value and data.status == StatusArticle.PUBLISHED.value:
+        #     # Préparation des données pour le payment
+        #     data_notification = PaymentCreate(
+        #         article_id=item.id,
+        #         payment_number=item.phone_transaction
+        #     )
+
+        #     # Création de la notification
+        #     payment = create_payment(db, data_notification, current_user_id)
+        #     item.status = data.status
+        # else:
+        #     item.status = data.status
     if data.owner_id is not None:
         item.owner_id = data.owner_id
     if data.town_id is not None:

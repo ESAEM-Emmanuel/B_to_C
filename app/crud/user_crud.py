@@ -131,7 +131,6 @@ def research(
 
 
 
-
 def create(db: Session, data: UserCreate, current_user_id: str = None):
     # Vérification des doublons
     filters = [

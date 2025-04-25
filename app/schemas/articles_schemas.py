@@ -14,7 +14,7 @@ from app.schemas.utils_schemas import (
     CategoryArticleSchema,
     ArticleStateSchema,
     PaymentSchema,
-    # CategoryArticleSchema,
+    NotificationSchema,
     # ArticleStateSchema,
     # SubscriptionTypeSchema,
     PrivilegeSchema,
@@ -233,6 +233,6 @@ class  ArticleSchema(BaseMixinSchema):
 
     signals: List[SignalSchema] = []  # Liste vide par défaut
     favorites: List[FavoriteSchema] = []  # Liste vide par défaut
-    notifications: List[SubscriptionSchema] = []  # Liste vide par défaut
+    notifications: List[NotificationSchema] = []  # Liste vide par défaut
     payments: List[PaymentSchema] = []  # Liste vide par défaut
 

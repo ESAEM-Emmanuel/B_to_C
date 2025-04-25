@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: d5f5b7f89516
+Revision ID: a973cf8ecfdd
 Revises: 
-Create Date: 2025-03-29 08:34:28.684138
+Create Date: 2025-04-25 12:55:07.354834
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd5f5b7f89516'
+revision: str = 'a973cf8ecfdd'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -81,6 +81,15 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_privileges_id'), 'privileges', ['id'], unique=True)
     op.create_index(op.f('ix_privileges_name'), 'privileges', ['name'], unique=True)
+    op.create_table('revoked_tokens',
+    sa.Column('id', sa.String(), nullable=False),
+    sa.Column('token', sa.String(), nullable=True),
+    sa.Column('revoked_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('is_revoked', sa.Boolean(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_revoked_tokens_id'), 'revoked_tokens', ['id'], unique=False)
+    op.create_index(op.f('ix_revoked_tokens_token'), 'revoked_tokens', ['token'], unique=True)
     op.create_table('roles',
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
@@ -100,7 +109,6 @@ def upgrade() -> None:
     sa.Column('days_min', sa.Integer(), nullable=False),
     sa.Column('max_days', sa.Integer(), nullable=False),
     sa.Column('rate', sa.Float(), nullable=False),
-    sa.Column('status', sa.Enum('ACTIF', 'INACTIF', name='statusproposition'), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('refnumber', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
@@ -132,10 +140,9 @@ def upgrade() -> None:
     op.create_index(op.f('ix_subscription_types_id'), 'subscription_types', ['id'], unique=True)
     op.create_index(op.f('ix_subscription_types_name'), 'subscription_types', ['name'], unique=True)
     op.create_table('tax_intervals',
-    sa.Column('min_price', sa.Float(), nullable=True),
-    sa.Column('max_price', sa.Float(), nullable=True),
-    sa.Column('daily_rate', sa.Float(), nullable=True),
-    sa.Column('is_read', sa.Boolean(), nullable=True),
+    sa.Column('min_price', sa.Float(), nullable=False),
+    sa.Column('max_price', sa.Float(), nullable=False),
+    sa.Column('daily_rate', sa.Float(), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('refnumber', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
@@ -150,7 +157,6 @@ def upgrade() -> None:
     op.create_table('volume_discounts',
     sa.Column('threshold', sa.Integer(), nullable=False),
     sa.Column('reduction', sa.Float(), nullable=False),
-    sa.Column('status', sa.Enum('ACTIF', 'INACTIF', name='statusproposition'), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('refnumber', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
@@ -219,41 +225,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=True)
     op.create_index(op.f('ix_users_phone'), 'users', ['phone'], unique=True)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
-    op.create_table('articles',
-    sa.Column('name', sa.String(length=255), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('reception_place', sa.String(length=255), nullable=False),
-    sa.Column('phone', sa.String(length=15), nullable=True),
-    sa.Column('phone_transaction', sa.String(length=15), nullable=True),
-    sa.Column('price', sa.Float(), nullable=True),
-    sa.Column('main_image', sa.String(length=255), nullable=False),
-    sa.Column('other_images', sa.ARRAY(sa.String()), nullable=True),
-    sa.Column('end_date', sa.Date(), nullable=True),
-    sa.Column('nb_visite', sa.Integer(), server_default=sa.text('0'), nullable=True),
-    sa.Column('status', sa.Enum('PENDING', 'PUBLISHED', 'EXPIRED', 'ABANDONED', name='statusarticle'), nullable=True, server_default='pending' ),
-    sa.Column('daily_rate', sa.Float(), nullable=True),
-    sa.Column('owner_id', sa.String(), nullable=False),
-    sa.Column('town_id', sa.String(), nullable=False),
-    sa.Column('category_article_id', sa.String(), nullable=False),
-    sa.Column('article_state_id', sa.String(), nullable=False),
-    sa.Column('id', sa.String(), nullable=False),
-    sa.Column('refnumber', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('created_by', sa.String(), nullable=True),
-    sa.Column('updated_by', sa.String(), nullable=True),
-    sa.Column('active', sa.Boolean(), nullable=True),
-    sa.ForeignKeyConstraint(['article_state_id'], ['article_states.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['category_article_id'], ['category_articles.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['town_id'], ['towns.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('refnumber')
-    )
-    op.create_index(op.f('ix_articles_id'), 'articles', ['id'], unique=True)
-    op.create_index(op.f('ix_articles_name'), 'articles', ['name'], unique=True)
-    op.create_index(op.f('ix_articles_phone'), 'articles', ['phone'], unique=False)
-    op.create_index(op.f('ix_articles_phone_transaction'), 'articles', ['phone_transaction'], unique=False)
     op.create_table('privilege_users',
     sa.Column('owner_id', sa.String(), nullable=False),
     sa.Column('privilege_id', sa.String(), nullable=False),
@@ -278,7 +249,6 @@ def upgrade() -> None:
     sa.Column('expiration_date', sa.DateTime(timezone=True), nullable=False),
     sa.Column('remaining_advertisements', sa.Integer(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=True),
-    sa.Column('status', sa.Enum('ACTIF', 'INACTIF', name='statusproposition'), nullable=False),
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('refnumber', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
@@ -308,6 +278,44 @@ def upgrade() -> None:
     sa.UniqueConstraint('refnumber')
     )
     op.create_index(op.f('ix_user_roles_id'), 'user_roles', ['id'], unique=True)
+    op.create_table('articles',
+    sa.Column('name', sa.String(length=255), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('reception_place', sa.String(length=255), nullable=False),
+    sa.Column('phone', sa.String(length=15), nullable=True),
+    sa.Column('phone_transaction', sa.String(length=15), nullable=True),
+    sa.Column('price', sa.Float(), nullable=True),
+    sa.Column('main_image', sa.String(length=255), nullable=False),
+    sa.Column('other_images', sa.ARRAY(sa.String()), nullable=True),
+    sa.Column('start_date', sa.Date(), nullable=True),
+    sa.Column('end_date', sa.Date(), nullable=True),
+    sa.Column('nb_visite', sa.Integer(), server_default=sa.text('0'), nullable=True),
+    sa.Column('status', sa.Enum('PENDING', 'PUBLISHED', 'EXPIRED', 'ABANDONED', name='statusarticle'), nullable=True),
+    sa.Column('amount_to_pay', sa.Float(), nullable=True),
+    sa.Column('owner_id', sa.String(), nullable=True),
+    sa.Column('subscription_id', sa.String(), nullable=True),
+    sa.Column('town_id', sa.String(), nullable=False),
+    sa.Column('category_article_id', sa.String(), nullable=False),
+    sa.Column('article_state_id', sa.String(), nullable=False),
+    sa.Column('id', sa.String(), nullable=False),
+    sa.Column('refnumber', sa.String(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_by', sa.String(), nullable=True),
+    sa.Column('updated_by', sa.String(), nullable=True),
+    sa.Column('active', sa.Boolean(), nullable=True),
+    sa.ForeignKeyConstraint(['article_state_id'], ['article_states.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['category_article_id'], ['category_articles.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['subscription_id'], ['subscriptions.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['town_id'], ['towns.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('refnumber')
+    )
+    op.create_index(op.f('ix_articles_id'), 'articles', ['id'], unique=True)
+    op.create_index(op.f('ix_articles_name'), 'articles', ['name'], unique=True)
+    op.create_index(op.f('ix_articles_phone'), 'articles', ['phone'], unique=False)
+    op.create_index(op.f('ix_articles_phone_transaction'), 'articles', ['phone_transaction'], unique=False)
     op.create_table('favorites',
     sa.Column('owner_id', sa.String(), nullable=False),
     sa.Column('article_id', sa.String(), nullable=False),
@@ -341,8 +349,9 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_notifications_id'), 'notifications', ['id'], unique=True)
     op.create_table('payments',
-    sa.Column('payment_number', sa.String(), nullable=True),
-    sa.Column('article_id', sa.String(), nullable=False),
+    sa.Column('payment_number', sa.String(), nullable=False),
+    sa.Column('article_id', sa.String(), nullable=True),
+    sa.Column('subscription_id', sa.String(), nullable=True),
     sa.Column('is_read', sa.Boolean(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('refnumber', sa.String(), nullable=False),
@@ -352,6 +361,7 @@ def upgrade() -> None:
     sa.Column('updated_by', sa.String(), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['article_id'], ['articles.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['subscription_id'], ['subscriptions.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('payment_number'),
     sa.UniqueConstraint('refnumber')
@@ -359,9 +369,9 @@ def upgrade() -> None:
     op.create_index(op.f('ix_payments_id'), 'payments', ['id'], unique=True)
     op.create_table('signals',
     sa.Column('owner_id', sa.String(), nullable=False),
-    sa.Column('offender_id', sa.String(), nullable=False),
-    sa.Column('article_id', sa.String(), nullable=False),
-    sa.Column('description', sa.Text(), nullable=False),
+    sa.Column('offender_id', sa.String(), nullable=True),
+    sa.Column('article_id', sa.String(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
     sa.Column('id', sa.String(), nullable=False),
     sa.Column('refnumber', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
@@ -390,17 +400,17 @@ def downgrade() -> None:
     op.drop_table('notifications')
     op.drop_index(op.f('ix_favorites_id'), table_name='favorites')
     op.drop_table('favorites')
+    op.drop_index(op.f('ix_articles_phone_transaction'), table_name='articles')
+    op.drop_index(op.f('ix_articles_phone'), table_name='articles')
+    op.drop_index(op.f('ix_articles_name'), table_name='articles')
+    op.drop_index(op.f('ix_articles_id'), table_name='articles')
+    op.drop_table('articles')
     op.drop_index(op.f('ix_user_roles_id'), table_name='user_roles')
     op.drop_table('user_roles')
     op.drop_index(op.f('ix_subscriptions_id'), table_name='subscriptions')
     op.drop_table('subscriptions')
     op.drop_index(op.f('ix_privilege_users_id'), table_name='privilege_users')
     op.drop_table('privilege_users')
-    op.drop_index(op.f('ix_articles_phone_transaction'), table_name='articles')
-    op.drop_index(op.f('ix_articles_phone'), table_name='articles')
-    op.drop_index(op.f('ix_articles_name'), table_name='articles')
-    op.drop_index(op.f('ix_articles_id'), table_name='articles')
-    op.drop_table('articles')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_phone'), table_name='users')
     op.drop_index(op.f('ix_users_id'), table_name='users')
@@ -423,6 +433,9 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_roles_name'), table_name='roles')
     op.drop_index(op.f('ix_roles_id'), table_name='roles')
     op.drop_table('roles')
+    op.drop_index(op.f('ix_revoked_tokens_token'), table_name='revoked_tokens')
+    op.drop_index(op.f('ix_revoked_tokens_id'), table_name='revoked_tokens')
+    op.drop_table('revoked_tokens')
     op.drop_index(op.f('ix_privileges_name'), table_name='privileges')
     op.drop_index(op.f('ix_privileges_id'), table_name='privileges')
     op.drop_table('privileges')
