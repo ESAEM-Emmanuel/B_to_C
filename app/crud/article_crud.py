@@ -10,7 +10,7 @@ from app.utils.utils import (
 from uuid import uuid4
 from typing import Optional, List
 from datetime import date, datetime, time
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
 from fastapi import HTTPException
 from pydantic import EmailStr
 import bcrypt
@@ -448,3 +448,29 @@ def restore(db: Session, item_id: str, current_user_id: str):
     db.commit()
     db.refresh(item)
     return item
+
+def random(db: Session, limit: int = 10, skip: int = 0, active: Optional[bool] = True):
+    try:
+        # Construction de la requête
+        query = db.query(Article)
+
+        # Filtre optionnel pour les articles actifs
+        if active is not None:
+            query = query.filter(Article.active == active)
+
+        # Tri aléatoire
+        query = query.order_by(func.random())  # Pour PostgreSQL/SQLite
+        # query = query.order_by(func.rand())  # Pour MySQL
+        total_records = query.count()
+
+        if limit == -1:
+            # Si limit = -1, on filtre uniquement les utilisateurs actifs
+            items = query.all()
+            total_records = len(items)  # Recalcul du nombre total d'enregistrements
+        else:
+            items = query.offset(skip).limit(limit).all() 
+            
+        return items, total_records
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur lors de la récupération des articles aléatoires : {str(e)}")

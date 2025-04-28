@@ -16,6 +16,7 @@ from app.crud.article_crud import (
     delete,
     get_by_id,
     restore,
+    random
 )
 from app.utils.utils import verify,get_user_by_id
 
@@ -166,6 +167,51 @@ async def research_route(
         ),
     )
 
+@router.get("/random", response_model=PaginatedResponse[ArticleSchema])
+async def get_random_articles(
+    limit: int = Query(10, ge=1, le=100),  # Limite le nombre d'articles (entre 1 et 100)
+    active: Optional[bool] = Query(True),  # Inclure uniquement les articles actifs
+    skip: int = 0,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint pour récupérer des articles de manière aléatoire.
+    """
+    items, total_records = random(
+        db=db,
+        limit=limit,
+        active=active,
+        skip=skip
+        )
+    # Calcul du nombre total de pages
+    if limit == -1:
+        total_pages = 1  # Tous les utilisateurs actifs sont renvoyés
+        current_page = 1
+    else:
+        total_pages = (total_records // limit) + (1 if total_records % limit > 0 else 0)
+        current_page = (skip // limit) + 1 if limit > 0 else 1
+
+    serialized = [
+        ArticleSchema(
+            **item.__dict__,  # Sérialise l'objet principal
+            owner=item.owner if item.owner else None,  # Inclure explicitement la relation town
+            subscription=item.subscription if item.subscription else None,  # Inclure explicitement la relation town
+            town=item.town if item.town else None,  # Inclure explicitement la relation town
+            creator=get_user_by_id(db, item.created_by) if item.created_by else None,
+            updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
+        )
+        for item in items
+    ]
+    # Construction de la réponse paginée
+    return PaginatedResponse[ArticleSchema](  # Utilisez PaginatedResponse[ArticleSchema]
+        records=serialized,
+        metadata=PaginationMetadata(
+            total_records=total_records,
+            total_pages=total_pages,
+            current_page=current_page,
+        ),
+    )
+
 @router.get("/{id}", response_model=ArticleSchema)
 async def get_detail(id: str, db: Session = Depends(get_db)):
     item = get_by_id(db, id)
@@ -174,10 +220,10 @@ async def get_detail(id: str, db: Session = Depends(get_db)):
     # Récupération du créateur
     # creator = get_user_by_id(db, item.created_by) if item.created_by else None
     # updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
-    owner=item.owner if item.owner else None,  # Inclure explicitement la relation town
-    subscription=item.subscription if item.subscription else None,  # Inclure explicitement la relation town
-    town=item.town if item.town else None,  # Inclure explicitement la relation town
-    creator=get_user_by_id(db, item.created_by) if item.created_by else None,
+    owner=item.owner if item.owner else None  # Inclure explicitement la relation town
+    subscription=item.subscription if item.subscription else None  # Inclure explicitement la relation town
+    town=item.town if item.town else None  # Inclure explicitement la relation town
+    creator=get_user_by_id(db, item.created_by) if item.created_by else None
     updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
 
     # Retourne l'utilisateur avec le créateur sérialisé
@@ -200,10 +246,10 @@ async def update_route(
         # Récupération du créateur
         # creator = get_user_by_id(db, item.created_by) if item.created_by else None
         # updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
-        owner=item.owner if item.owner else None,  # Inclure explicitement la relation town
-        subscription=item.subscription if item.subscription else None,  # Inclure explicitement la relation town
-        town=item.town if item.town else None,  # Inclure explicitement la relation town
-        creator=get_user_by_id(db, item.created_by) if item.created_by else None,
+        owner=item.owner if item.owner else None  # Inclure explicitement la relation town
+        subscription=item.subscription if item.subscription else None  # Inclure explicitement la relation town
+        town=item.town if item.town else None  # Inclure explicitement la relation town
+        creator=get_user_by_id(db, item.created_by) if item.created_by else None
         updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
 
         # Retourne l'utilisateur avec le créateur sérialisé
@@ -237,10 +283,10 @@ async def restore_route(
         # Récupération du créateur
         # creator = get_user_by_id(db, item.created_by) if item.created_by else None
         # updator = get_user_by_id(db, item.updated_by) if item.updated_by else None
-        owner=item.owner if item.owner else None,  # Inclure explicitement la relation town
-        subscription=item.subscription if item.subscription else None,  # Inclure explicitement la relation town
-        town=item.town if item.town else None,  # Inclure explicitement la relation town
-        creator=get_user_by_id(db, item.created_by) if item.created_by else None,
+        owner=item.owner if item.owner else None  # Inclure explicitement la relation town
+        subscription=item.subscription if item.subscription else None  # Inclure explicitement la relation town
+        town=item.town if item.town else None  # Inclure explicitement la relation town
+        creator=get_user_by_id(db, item.created_by) if item.created_by else None
         updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
 
         # Retourne l'utilisateur avec le créateur sérialisé
@@ -250,3 +296,4 @@ async def restore_route(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
