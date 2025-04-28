@@ -104,7 +104,7 @@ async def research_route(
         total_pages = 1  # Tous les utilisateurs actifs sont renvoyés
         current_page = 1
     else:
-        total_pages = (total_records // limit) + 1 if limit > 0 else 1
+        total_pages = (total_records // limit) + (1 if total_records % limit > 0 else 0)
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
     serialized = [

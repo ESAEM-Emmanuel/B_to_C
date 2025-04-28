@@ -89,12 +89,13 @@ async def research_route(
         total_pages = 1  # Tous les utilisateurs actifs sont renvoyés
         current_page = 1
     else:
-        total_pages = (total_records // limit) + 1 if limit > 0 else 1
+        total_pages = (total_records // limit) + (1 if total_records % limit > 0 else 0)
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
     serialized = [
         TownSchema(
             **item.__dict__,  # Sérialise l'objet principal
+            country=item.country if item.country else None,  # Inclure explicitement la relation town
             creator=get_user_by_id(db, item.created_by) if item.created_by else None,
             updator=get_user_by_id(db, item.updated_by) if item.updated_by else None
         )

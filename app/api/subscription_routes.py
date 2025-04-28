@@ -111,14 +111,13 @@ async def research_route(
         skip=skip,
         limit=limit,
     )
-    # print("Items retournés par research:", [item.__dict__ for item in items])
 
     # Calcul du nombre total de pages
     if limit == -1:
         total_pages = 1  # Tous les utilisateurs actifs sont renvoyés
         current_page = 1
     else:
-        total_pages = (total_records // limit) + 1 if limit > 0 else 1
+        total_pages = (total_records // limit) + (1 if total_records % limit > 0 else 0)
         current_page = (skip // limit) + 1 if limit > 0 else 1
 
     # Transformation des objets SQLAlchemy en instances Pydantic
@@ -143,9 +142,9 @@ async def research_route(
         for item in items
     ]
 
-    # Pagination
-    total_pages = (total_records // limit) + 1 if limit > 0 else 1
-    current_page = (skip // limit) + 1 if limit > 0 else 1
+    # # Pagination
+    # total_pages = (total_records // limit) + 1 if limit > 0 else 1
+    # current_page = (skip // limit) + 1 if limit > 0 else 1
 
     return PaginatedResponse[SubscriptionSchema](
         records=serialized,

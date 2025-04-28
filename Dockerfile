@@ -16,6 +16,8 @@ COPY . .
 
 # Étape 6 : Exposer le port sur lequel FastAPI écoutera
 EXPOSE 8000
+# etape 7 : effectuer les migration
+alembic upgrade head
 
 # Étape 7 : Commande pour démarrer l'application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
